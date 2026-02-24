@@ -46,3 +46,4 @@ vault-sync/*
 data/backups/*
 !data/backups/.gitkeep
 docs/spike-*.md
+.venv/

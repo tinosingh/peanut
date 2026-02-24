@@ -1,0 +1,30 @@
+{
+  "version": "1",
+  "riskTierRules": {
+    "high": [
+      "src/api/**",
+      "src/auth/**",
+      "db/**",
+      "lib/tools/**",
+      "app/api/**"
+    ],
+    "low": ["**"]
+  },
+  "mergePolicy": {
+    "high": {
+      "requiredChecks": [
+        "risk-policy-gate",
+        "harness-smoke",
+        "Browser Evidence",
+        "CI Pipeline"
+      ]
+    },
+    "low": {
+      "requiredChecks": ["risk-policy-gate", "CI Pipeline"]
+    }
+  },
+  "docsDriftRules": {
+    "triggerPaths": ["src/api/**", "db/**", "app/api/**"],
+    "requiredDocs": ["PRD.md"]
+  }
+}

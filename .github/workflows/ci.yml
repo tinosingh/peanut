@@ -1,75 +1,85 @@
-name: CI
+# CI Pipeline
+# Order: risk-policy-gate (preflight) → review agent → CI fanout (lint, test, harness, browser) → build
+# Never start expensive jobs on a PR head that is already blocked by policy.
+
+name: CI Pipeline
 
 on:
-  push:
-    branches: [main]
   pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened]
+  push:
     branches: [main]
 
 jobs:
+  # ── Stage 1: Preflight ──────────────────────────────────────────────────────
+  # risk-policy-gate runs as a separate workflow (risk-policy-gate.yml).
+  # This job documents the dependency — branch protection enforces it.
+  # CI fanout jobs below declare needs: [] intentionally; they are gated
+  # via branch protection requiring risk-policy-gate to pass first.
+
+  # ── Stage 2: Fanout (runs after risk-policy-gate passes on branch protection) ──
+
   lint:
     name: Lint
     runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
     steps:
       - uses: actions/checkout@v4
 
-      # ── Add your linter steps here ──
-      # Examples:
-      #
-      # Python:
-      #   - uses: actions/setup-python@v5
-      #     with: { python-version: "3.12" }
-      #   - run: pip install ruff && ruff check src/ tests/
-      #
-      # Node:
-      #   - uses: actions/setup-node@v4
-      #     with: { node-version: "22" }
-      #   - run: npm ci && npm run lint
-      #
-      # Go:
-      #   - uses: actions/setup-go@v5
-      #     with: { go-version: "1.22" }
-      #   - run: golangci-lint run
+      # ── Add your linter here ──
+      # Python:  pip install ruff && ruff check src/ tests/
+      # Node:    npm ci && npm run lint
+      # Go:      golangci-lint run
 
       - run: echo "TODO — configure linter for your stack"
 
   test:
-    name: Test
+    name: CI Pipeline
     runs-on: ubuntu-latest
-    # Only run tests when source or test files change
-    if: >-
-      github.event_name == 'push' ||
-      contains(github.event.pull_request.changed_files_url, 'src/') ||
-      contains(github.event.pull_request.changed_files_url, 'tests/')
+    if: github.event_name == 'pull_request'
     steps:
       - uses: actions/checkout@v4
 
       # ── Add your test runner here ──
-      # Examples:
-      #
-      # Python:
-      #   - uses: actions/setup-python@v5
-      #     with: { python-version: "3.12" }
-      #   - run: pip install -e ".[test]" && pytest tests/ --tb=short -q
-      #
-      # Node:
-      #   - uses: actions/setup-node@v4
-      #     with: { node-version: "22" }
-      #   - run: npm ci && npm test -- --reporter=json > test-results.json
-      #
-      # Go:
-      #   - uses: actions/setup-go@v5
-      #     with: { go-version: "1.22" }
-      #   - run: go test -json ./... > test-results.json
+      # Python:  pip install -e ".[test]" && pytest tests/ --tb=short -q
+      # Node:    npm ci && npm test
+      # Go:      go test ./...
 
       - run: echo "TODO — configure test runner for your stack"
 
+  harness-smoke:
+    name: harness-smoke
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v4
+
+      # ── Run harness smoke tests ──
+      # npm run harness:smoke
+      # pytest tests/harness/ -m smoke
+
+      - run: echo "TODO — configure harness smoke tests"
+
+  browser-evidence:
+    name: Browser Evidence
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v4
+
+      # ── Capture and verify browser evidence for UI/flow changes ──
+      # Only required for high-risk tier PRs touching UI paths.
+      # npm run harness:ui:capture-browser-evidence
+      # npm run harness:ui:verify-browser-evidence
+
+      - run: echo "TODO — configure browser evidence capture (required for UI/flow changes)"
+
+  # ── Stage 3: Build (main branch only, after all checks pass) ───────────────
   build:
     name: Build
     runs-on: ubuntu-latest
-    # Only build on push to main (not on PRs)
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    needs: [lint, test]
     steps:
       - uses: actions/checkout@v4
 

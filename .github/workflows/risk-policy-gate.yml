@@ -1,0 +1,103 @@
+# Risk Policy Gate — preflight check for every PR
+# Must pass before expensive CI fanout jobs are meaningful.
+# Enforced as a required status check via branch protection.
+
+name: risk-policy-gate
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened]
+
+jobs:
+  risk-policy-gate:
+    name: risk-policy-gate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get changed files
+        id: changed
+        run: |
+          git diff --name-only origin/${{ github.base_ref }}...HEAD > changed-files.txt
+          echo "Changed files:"
+          cat changed-files.txt
+
+      - name: Classify risk tier
+        id: risk
+        run: |
+          node -e "
+            const fs = require('fs');
+            const policy = JSON.parse(fs.readFileSync('risk-policy.json', 'utf8'));
+            const changed = fs.readFileSync('changed-files.txt', 'utf8').trim().split('\n').filter(Boolean);
+
+            function match(file, pattern) {
+              // Simple glob: ** matches anything, * matches non-slash chars
+              const re = pattern
+                .replace(/\*\*/g, '__DSTAR__')
+                .replace(/\*/g, '[^/]*')
+                .replace(/__DSTAR__/g, '.*');
+              return new RegExp('^' + re + '$').test(file);
+            }
+
+            const isHigh = changed.some(f =>
+              (policy.riskTierRules.high || []).some(p => match(f, p))
+            );
+            const tier = isHigh ? 'high' : 'low';
+
+            console.log('Risk tier:', tier);
+            console.log('Changed files:', changed.length);
+            fs.appendFileSync(process.env.GITHUB_OUTPUT, 'tier=' + tier + '\n');
+          "
+
+      - name: Check docs drift
+        run: |
+          node -e "
+            const fs = require('fs');
+            const policy = JSON.parse(fs.readFileSync('risk-policy.json', 'utf8'));
+            const changed = fs.readFileSync('changed-files.txt', 'utf8').trim().split('\n').filter(Boolean);
+            const rules = policy.docsDriftRules || {};
+            const triggers = rules.triggerPaths || [];
+            const required = rules.requiredDocs || [];
+
+            function match(file, pattern) {
+              const re = pattern
+                .replace(/\*\*/g, '__DSTAR__')
+                .replace(/\*/g, '[^/]*')
+                .replace(/__DSTAR__/g, '.*');
+              return new RegExp('^' + re + '$').test(file);
+            }
+
+            const triggered = changed.some(f => triggers.some(p => match(f, p)));
+            if (triggered) {
+              const missing = required.filter(doc => !changed.includes(doc));
+              if (missing.length > 0) {
+                console.error('Docs drift: these files must be updated when API/schema changes:', missing.join(', '));
+                process.exit(1);
+              }
+            }
+            console.log('Docs drift check passed.');
+          "
+
+      - name: Assert required checks for tier
+        run: |
+          node -e "
+            const fs = require('fs');
+            const policy = JSON.parse(fs.readFileSync('risk-policy.json', 'utf8'));
+            const tier = '${{ steps.risk.outputs.tier }}';
+            const checks = policy.mergePolicy[tier].requiredChecks;
+            console.log('Tier:', tier);
+            console.log('Required checks:', checks.join(', '));
+            fs.appendFileSync(process.env.GITHUB_OUTPUT || '/dev/null', 'required_checks=' + checks.join(',') + '\n');
+          "
+
+      - name: Write job summary
+        run: |
+          echo "### Risk Policy Gate" >> $GITHUB_STEP_SUMMARY
+          echo "| Field | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|-------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Risk tier | \`${{ steps.risk.outputs.tier }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Head SHA | \`${{ github.event.pull_request.head.sha }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Base | \`${{ github.base_ref }}\` |" >> $GITHUB_STEP_SUMMARY

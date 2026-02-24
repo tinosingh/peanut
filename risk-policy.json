@@ -2,11 +2,11 @@
   "version": "1",
   "riskTierRules": {
     "high": [
-      "src/api/**",
-      "src/auth/**",
       "db/**",
-      "lib/tools/**",
-      "app/api/**"
+      "src/ingest/**",
+      "src/api/**",
+      "docker-compose.yml",
+      "Makefile"
     ],
     "low": ["**"]
   },
@@ -15,7 +15,6 @@
       "requiredChecks": [
         "risk-policy-gate",
         "harness-smoke",
-        "Browser Evidence",
         "CI Pipeline"
       ]
     },
@@ -24,7 +23,7 @@
     }
   },
   "docsDriftRules": {
-    "triggerPaths": ["src/api/**", "db/**", "app/api/**"],
+    "triggerPaths": ["db/**", "src/api/**"],
     "requiredDocs": ["PRD.md"]
   }
 }

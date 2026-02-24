@@ -1,6 +1,6 @@
 # CI Pipeline
-# Order: risk-policy-gate (preflight) → review agent → CI fanout (lint, test, harness, browser) → build
-# Never start expensive jobs on a PR head that is already blocked by policy.
+# Order: risk-policy-gate (preflight, separate workflow) → lint → test → harness-smoke → build
+# risk-policy-gate is enforced as a required check via branch protection.
 
 name: CI Pipeline
 
@@ -12,77 +12,93 @@ on:
     branches: [main]
 
 jobs:
-  # ── Stage 1: Preflight ──────────────────────────────────────────────────────
-  # risk-policy-gate runs as a separate workflow (risk-policy-gate.yml).
-  # This job documents the dependency — branch protection enforces it.
-  # CI fanout jobs below declare needs: [] intentionally; they are gated
-  # via branch protection requiring risk-policy-gate to pass first.
-
-  # ── Stage 2: Fanout (runs after risk-policy-gate passes on branch protection) ──
-
   lint:
     name: Lint
     runs-on: ubuntu-latest
     if: github.event_name == 'pull_request'
     steps:
       - uses: actions/checkout@v4
-
-      # ── Add your linter here ──
-      # Python:  pip install ruff && ruff check src/ tests/
-      # Node:    npm ci && npm run lint
-      # Go:      golangci-lint run
-
-      - run: echo "TODO — configure linter for your stack"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install ruff
+      - run: ruff check src/ tests/
 
   test:
     name: CI Pipeline
     runs-on: ubuntu-latest
     if: github.event_name == 'pull_request'
+    services:
+      postgres:
+        image: pgvector/pgvector:0.8.1-pg17
+        env:
+          POSTGRES_USER: pkg
+          POSTGRES_PASSWORD: pkg
+          POSTGRES_DB: pkg_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      POSTGRES_URL: postgresql://pkg:pkg@localhost:5432/pkg_test
+      OLLAMA_BASE_URL: http://localhost:11434
+      FALKORDB_HOST: localhost
+      FALKORDB_PORT: 6379
     steps:
       - uses: actions/checkout@v4
-
-      # ── Add your test runner here ──
-      # Python:  pip install -e ".[test]" && pytest tests/ --tb=short -q
-      # Node:    npm ci && npm test
-      # Go:      go test ./...
-
-      - run: echo "TODO — configure test runner for your stack"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install dependencies
+        run: pip install -e ".[test]"
+      - name: Apply schema
+        run: psql "$POSTGRES_URL" -f db/init.sql
+      - name: Run tests
+        run: pytest tests/ --tb=short -q --ignore=tests/harness
 
   harness-smoke:
     name: harness-smoke
     runs-on: ubuntu-latest
     if: github.event_name == 'pull_request'
+    services:
+      postgres:
+        image: pgvector/pgvector:0.8.1-pg17
+        env:
+          POSTGRES_USER: pkg
+          POSTGRES_PASSWORD: pkg
+          POSTGRES_DB: pkg_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      POSTGRES_URL: postgresql://pkg:pkg@localhost:5432/pkg_test
+      OLLAMA_BASE_URL: http://localhost:11434
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -e ".[test]"
+      - run: psql "$POSTGRES_URL" -f db/init.sql
+      - run: pytest tests/harness/ --tb=short -q
 
-      # ── Run harness smoke tests ──
-      # npm run harness:smoke
-      # pytest tests/harness/ -m smoke
-
-      - run: echo "TODO — configure harness smoke tests"
-
-  browser-evidence:
-    name: Browser Evidence
-    runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request'
-    steps:
-      - uses: actions/checkout@v4
-
-      # ── Capture and verify browser evidence for UI/flow changes ──
-      # Only required for high-risk tier PRs touching UI paths.
-      # npm run harness:ui:capture-browser-evidence
-      # npm run harness:ui:verify-browser-evidence
-
-      - run: echo "TODO — configure browser evidence capture (required for UI/flow changes)"
-
-  # ── Stage 3: Build (main branch only, after all checks pass) ───────────────
   build:
     name: Build
     runs-on: ubuntu-latest
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     steps:
       - uses: actions/checkout@v4
-
-      # ── Add your build steps here ──
-
-      - run: echo "TODO — configure build for your stack"
+      - name: Validate docker-compose
+        run: docker compose config --quiet
+      - name: Build images
+        run: docker compose build --no-cache

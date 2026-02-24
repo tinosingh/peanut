@@ -37,3 +37,12 @@ htmlcov/
 # Logs
 *.log
 logs/
+
+# Project-specific
+drop-zone/*
+!drop-zone/.gitkeep
+vault-sync/*
+!vault-sync/.gitkeep
+data/backups/*
+!data/backups/.gitkeep
+docs/spike-*.md

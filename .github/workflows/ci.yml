@@ -1,0 +1,78 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # ── Add your linter steps here ──
+      # Examples:
+      #
+      # Python:
+      #   - uses: actions/setup-python@v5
+      #     with: { python-version: "3.12" }
+      #   - run: pip install ruff && ruff check src/ tests/
+      #
+      # Node:
+      #   - uses: actions/setup-node@v4
+      #     with: { node-version: "22" }
+      #   - run: npm ci && npm run lint
+      #
+      # Go:
+      #   - uses: actions/setup-go@v5
+      #     with: { go-version: "1.22" }
+      #   - run: golangci-lint run
+
+      - run: echo "TODO — configure linter for your stack"
+
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    # Only run tests when source or test files change
+    if: >-
+      github.event_name == 'push' ||
+      contains(github.event.pull_request.changed_files_url, 'src/') ||
+      contains(github.event.pull_request.changed_files_url, 'tests/')
+    steps:
+      - uses: actions/checkout@v4
+
+      # ── Add your test runner here ──
+      # Examples:
+      #
+      # Python:
+      #   - uses: actions/setup-python@v5
+      #     with: { python-version: "3.12" }
+      #   - run: pip install -e ".[test]" && pytest tests/ --tb=short -q
+      #
+      # Node:
+      #   - uses: actions/setup-node@v4
+      #     with: { node-version: "22" }
+      #   - run: npm ci && npm test -- --reporter=json > test-results.json
+      #
+      # Go:
+      #   - uses: actions/setup-go@v5
+      #     with: { go-version: "1.22" }
+      #   - run: go test -json ./... > test-results.json
+
+      - run: echo "TODO — configure test runner for your stack"
+
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    # Only build on push to main (not on PRs)
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [lint, test]
+    steps:
+      - uses: actions/checkout@v4
+
+      # ── Add your build steps here ──
+
+      - run: echo "TODO — configure build for your stack"

@@ -48,12 +48,11 @@ services:
     depends_on:
       pkg-graph:
         condition: service_healthy
-    command: >
-      sh -c "redis-cli -h pkg-graph -p 6379
-             GRAPH.QUERY pkg 'MERGE (n:_Init {done:true}) RETURN n' &&
-             redis-cli -h pkg-graph -p 6379
-             GRAPH.QUERY pkg 'MATCH (n:_Init) DELETE n' &&
-             echo 'pkg graph initialised'"
+    entrypoint: ["/bin/sh", "-c"]
+    command: |
+      redis-cli -h pkg-graph -p 6379 GRAPH.QUERY pkg 'MERGE (n:_Init {done:true}) RETURN n' &&
+      redis-cli -h pkg-graph -p 6379 GRAPH.QUERY pkg 'MATCH (n:_Init) DELETE n' &&
+      echo 'pkg graph initialised'
     networks:
       - pkg-net
 

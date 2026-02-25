@@ -6,7 +6,7 @@ import logging
 import os
 import signal
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import structlog
 
@@ -16,7 +16,7 @@ log = structlog.get_logger()
 async def _insert_chunks(pool, doc_id: str, chunks, pii_flags: list[bool]) -> None:
     """Insert Chunk objects with embedding_status='pending'."""
     async with pool.connection() as conn:
-        for chunk, pii in zip(chunks, pii_flags):
+        for chunk, pii in zip(chunks, pii_flags, strict=False):
             await conn.execute(
                 """
                 INSERT INTO chunks (id, doc_id, chunk_index, text, pii_detected)
@@ -29,16 +29,16 @@ async def _insert_chunks(pool, doc_id: str, chunks, pii_flags: list[bool]) -> No
 
 async def _handle_file(path: str, sha: str) -> None:
     """Called by watcher for each new file; runs full ingest pipeline."""
-    from src.shared.db import get_pool
+    from src.ingest.chunker import chunk_text
+    from src.ingest.db import ingest_document, sha256_exists
     from src.ingest.parsers.detector import detect_type
+    from src.ingest.parsers.markdown_parser import parse_markdown
     from src.ingest.parsers.mbox import parse_mbox
     from src.ingest.parsers.pdf import parse_pdf
-    from src.ingest.parsers.markdown_parser import parse_markdown
-    from src.ingest.chunker import chunk_text
     from src.ingest.pii import has_pii
-    from src.ingest.db import ingest_document, sha256_exists
     from src.ingest.vault_sync import write_document_note
     from src.shared.config import get_config
+    from src.shared.db import get_pool
 
     log.info("ingest_file_start", path=path, sha=sha)
     pool = await get_pool()
@@ -51,7 +51,7 @@ async def _handle_file(path: str, sha: str) -> None:
     chunk_size = int(cfg.get("chunk_size", 512))
     chunk_overlap = int(cfg.get("chunk_overlap", 50))
     vault_sync_path = os.getenv("VAULT_SYNC_PATH", "./vault-sync")
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
 
     try:
         file_type = detect_type(path)
@@ -130,10 +130,10 @@ async def main() -> None:
     )
     log.info("ingest_worker_starting")
 
-    from src.shared.db import get_pool, close_pool
     from src.ingest.embedding_worker import embedding_worker
     from src.ingest.outbox_worker import outbox_worker
     from src.ingest.watcher import watch_drop_zone
+    from src.shared.db import close_pool, get_pool
 
     drop_zone = os.getenv("DROP_ZONE_PATH", "/drop-zone")
     ollama_url = os.getenv("OLLAMA_URL", "http://host.docker.internal:11434")

@@ -3,8 +3,8 @@ from __future__ import annotations
 
 import os
 
-from psycopg_pool import AsyncConnectionPool
 from pgvector.psycopg import register_vector
+from psycopg_pool import AsyncConnectionPool
 
 _pool: AsyncConnectionPool | None = None
 

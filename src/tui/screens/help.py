@@ -4,7 +4,7 @@ from __future__ import annotations
 from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.screen import ModalScreen
-from textual.widgets import Static, Button
+from textual.widgets import Button, Static
 
 HELP_TEXT = """\
 [bold cyan]PKG — Key Bindings[/bold cyan]

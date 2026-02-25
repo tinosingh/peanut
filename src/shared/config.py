@@ -6,7 +6,6 @@ Falls back to env vars / defaults if DB is unavailable.
 from __future__ import annotations
 
 import os
-from functools import lru_cache
 from typing import Any
 
 import structlog

@@ -10,7 +10,6 @@ sets embedding_status='failed' — prevents infinite retry loops.
 from __future__ import annotations
 
 import asyncio
-import os
 from typing import Any
 
 import httpx
@@ -71,7 +70,7 @@ async def embedding_worker(
             try:
                 embeddings = await call_ollama_embed(ollama_url, model, texts)
                 async with pool.connection() as conn:
-                    for chunk_id, embedding in zip(ids, embeddings):
+                    for chunk_id, embedding in zip(ids, embeddings, strict=False):
                         await conn.execute("""
                             UPDATE chunks
                             SET embedding = %s,

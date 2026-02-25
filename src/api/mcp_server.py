@@ -26,9 +26,9 @@ def get_mcp_app():
     if _mcp_app is not None:
         return _mcp_app
     try:
-        from mcp.server.fastapi import MCPApp
         from mcp.server import Server
-        from mcp.types import Tool, TextContent
+        from mcp.server.fastapi import MCPApp
+        from mcp.types import TextContent, Tool
 
         server = Server("pkg-knowledge-base")
 

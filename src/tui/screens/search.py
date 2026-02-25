@@ -2,8 +2,8 @@
 from __future__ import annotations
 
 import os
-import webbrowser
 import urllib.parse
+import webbrowser
 from pathlib import Path
 
 from textual.app import ComposeResult

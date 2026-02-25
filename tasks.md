@@ -13,7 +13,7 @@ tasks:
   - id: T-000
     title: "Scaffold project source layout and Docker Compose stack"
     priority: P0
-    status: pending
+    status: done
     depends_on: []
     branch: "feat/T-000-scaffold-docker-compose"
     pr_url: ""

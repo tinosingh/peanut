@@ -22,8 +22,8 @@ class WeightUpdate(BaseModel):
 @router.get("/config")
 async def get_config_endpoint() -> dict:
     """Return all config keys."""
-    from src.shared.db import get_pool
     from src.shared.config import get_config
+    from src.shared.db import get_pool
     pool = await get_pool()
     return await get_config(pool)
 

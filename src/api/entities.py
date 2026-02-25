@@ -6,7 +6,7 @@ T-042: POST /entities/hard-delete (admin) deletes rows with deleted_at < now()-3
 from __future__ import annotations
 
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Literal
 
@@ -44,7 +44,7 @@ async def soft_delete(entity_type: Literal["document", "person"], entity_id: str
     pool = await get_pool()
 
     table = "documents" if entity_type == "document" else "persons"
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
 
     async with pool.connection() as conn:
         result = await conn.execute(
@@ -119,7 +119,7 @@ async def hard_delete(confirm: bool = False) -> HardDeleteResponse:
     # Append to deletion log
     DELETION_LOG.parent.mkdir(parents=True, exist_ok=True)
     receipt = {
-        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "timestamp": datetime.now(UTC).isoformat(),
         "deleted_documents": deleted_docs,
         "deleted_persons": deleted_persons,
         "doc_ids": doc_ids,
@@ -140,8 +140,8 @@ async def hard_delete(confirm: bool = False) -> HardDeleteResponse:
 @router.get("/entities/merge-candidates")
 async def get_merge_candidates() -> dict:
     """Return person pairs that are candidates for entity resolution merge."""
-    from src.shared.db import get_pool
     from src.ingest.entity_resolution import score_pair_b
+    from src.shared.db import get_pool
     pool = await get_pool()
     async with pool.connection() as conn:
         rows = await (await conn.execute(
@@ -202,7 +202,7 @@ async def merge_entities(name_a: str, name_b: str) -> dict:
     """Merge person name_b into name_a (sets merged_into FK + outbox event)."""
     from src.shared.db import get_pool
     pool = await get_pool()
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     async with pool.connection() as conn:
         row_a = await (await conn.execute(
             "SELECT id::text FROM persons WHERE display_name = %s AND deleted_at IS NULL LIMIT 1",

@@ -154,7 +154,20 @@ async def get_merge_candidates() -> dict:
             """
         )).fetchall()
 
-    # Naive O(n²) for small person sets — production: use blocking
+        # Build email → set of doc_ids map for shared_docs computation
+        email_docs_rows = await (await conn.execute(
+            """
+            SELECT metadata->>'sender_email' AS email, id::text AS doc_id
+            FROM documents
+            WHERE deleted_at IS NULL
+              AND metadata->>'sender_email' IS NOT NULL
+            """
+        )).fetchall()
+
+    email_to_docs: dict[str, set[str]] = {}
+    for email, doc_id in email_docs_rows:
+        email_to_docs.setdefault(email, set()).add(doc_id)
+
     THRESHOLD = 0.85
     candidates = []
     persons = [{"id": r[0], "name": r[1] or "", "email": r[2]} for r in rows]
@@ -171,12 +184,15 @@ async def get_merge_candidates() -> dict:
                     a["email"].split("@")[-1] == b["email"].split("@")[-1]
                     if "@" in a["email"] and "@" in b["email"] else False
                 )
+                docs_a = email_to_docs.get(a["email"], set())
+                docs_b = email_to_docs.get(b["email"], set())
+                shared_docs = len(docs_a & docs_b)
                 candidates.append({
                     "id_a": a["id"], "name_a": a["name"],
                     "id_b": b["id"], "name_b": b["name"],
                     "jw_score": round(score, 3),
                     "same_domain": same_domain,
-                    "shared_docs": 0,  # TODO: join in Epic 3 completion
+                    "shared_docs": shared_docs,
                 })
     return {"candidates": candidates}
 

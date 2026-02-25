@@ -82,3 +82,31 @@ class PKGApp(App):
 
     def action_goto_dashboard(self) -> None:
         self.switch_screen(DashboardScreen())
+
+
+if __name__ == "__main__":
+    import sys
+    import traceback
+    from pathlib import Path
+
+    try:
+        PKGApp().run()
+    except Exception as e:
+        # Log crash to file since Textual captures stdout/stderr
+        crash_log = Path("/tmp/tui_crash.log")
+        try:
+            with crash_log.open("w") as f:
+                f.write(f"PKG TUI Crashed: {type(e).__name__}: {e}\n\n")
+                f.write("=" * 60 + "\n")
+                f.write("Full Traceback:\n")
+                f.write("=" * 60 + "\n")
+                traceback.print_exc(file=f)
+                f.write("\n" + "=" * 60 + "\n")
+                f.write(f"Python: {sys.version}\n")
+                f.write(f"Executable: {sys.executable}\n")
+        except Exception as log_err:
+            # If even logging fails, print to stderr
+            print(f"FATAL: Crash logging failed: {log_err}", file=sys.stderr)
+            traceback.print_exc(file=sys.stderr)
+        # Re-raise so Docker sees the failure
+        raise

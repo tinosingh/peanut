@@ -1,0 +1,34 @@
+# Development override for docker-compose.yml
+# Enables live code reload without rebuilding images
+#
+# Usage:
+#   docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d
+#   or: export COMPOSE_FILE=docker-compose.yml:docker-compose.dev.yml
+
+services:
+  ingest-worker:
+    volumes:
+      - ./src:/app/src:ro
+      - ./tests:/app/tests:ro
+      - ./drop-zone:/drop-zone:ro
+      - ./vault-sync:/vault-sync
+      - pkg_ingest:/data
+    environment:
+      # Enable Python unbuffered mode for immediate log output
+      PYTHONUNBUFFERED: "1"
+      # Disable .pyc file generation (cleaner during dev)
+      PYTHONDONTWRITEBYTECODE: "1"
+
+  tui-controller:
+    volumes:
+      - ./src:/app/src:ro
+      - ./tests:/app/tests:ro
+      - ./vault-sync:/vault-sync:ro
+    environment:
+      PYTHONUNBUFFERED: "1"
+      PYTHONDONTWRITEBYTECODE: "1"
+      # Enable more verbose logging in dev
+      LOG_LEVEL: ${LOG_LEVEL:-DEBUG}
+
+volumes:
+  pkg_ingest:

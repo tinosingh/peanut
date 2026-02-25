@@ -51,7 +51,7 @@ logs:
 
 tui:
 	@echo "Opening TUI (use Ctrl+C to exit)..."
-	docker exec -it pkg-tui python -m src.tui.main
+	docker exec -it pkg-tui python -m src.tui.app
 
 test:
 	@$(COMPOSE) -f docker-compose.test.yml up -d

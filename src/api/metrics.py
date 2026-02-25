@@ -28,11 +28,24 @@ async def metrics() -> Response:
 
         pool = await get_pool()
         async with pool.connection() as conn:
+            # Chunk embedding status
             rows = await (await conn.execute(
                 "SELECT embedding_status, COUNT(*) FROM chunks GROUP BY embedding_status"
             )).fetchall()
+
+            # Outbox total depth
             outbox_row = await (await conn.execute(
                 "SELECT COUNT(*) FROM outbox WHERE processed_at IS NULL AND NOT failed"
+            )).fetchone()
+
+            # Outbox depth by event type
+            outbox_by_type = await (await conn.execute(
+                "SELECT event_type, COUNT(*) FROM outbox WHERE processed_at IS NULL AND NOT failed GROUP BY event_type"
+            )).fetchall()
+
+            # Oldest pending event age (seconds)
+            outbox_oldest = await (await conn.execute(
+                "SELECT EXTRACT(EPOCH FROM (NOW() - MIN(created_at))) FROM outbox WHERE processed_at IS NULL AND NOT failed"
             )).fetchone()
 
         # Build metric output manually to avoid global state issues in tests
@@ -46,6 +59,18 @@ async def metrics() -> Response:
         lines.append("# TYPE pkg_outbox_depth gauge")
         lines.append(f"pkg_outbox_depth {outbox_depth}")
 
+        # Per-event-type pending counts
+        lines.append("# HELP pkg_outbox_pending_events Pending outbox events by type")
+        lines.append("# TYPE pkg_outbox_pending_events gauge")
+        for event_type, count in outbox_by_type:
+            lines.append(f'pkg_outbox_pending_events{{event_type="{event_type}"}} {count}')
+
+        # Oldest pending event age
+        oldest_age = outbox_oldest[0] if outbox_oldest and outbox_oldest[0] is not None else 0
+        lines.append("# HELP pkg_outbox_oldest_pending_seconds Age of oldest pending event")
+        lines.append("# TYPE pkg_outbox_oldest_pending_seconds gauge")
+        lines.append(f"pkg_outbox_oldest_pending_seconds {oldest_age}")
+
         body = "\n".join(lines) + "\n"
         return Response(content=body, media_type="text/plain; version=0.0.4")
 
@@ -58,4 +83,7 @@ async def metrics() -> Response:
         )
     except Exception as exc:
         log.error("metrics_failed", error=str(exc))
-        return Response(content=f"# error: {exc}\n", status_code=500, media_type="text/plain")
+        return Response(
+            content=f"# error: {type(exc).__name__}\n",
+            status_code=500, media_type="text/plain",
+        )

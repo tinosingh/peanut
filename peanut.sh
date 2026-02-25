@@ -227,7 +227,7 @@ launch_tui() {
     echo -e "${YELLOW}Press Ctrl+C to exit${NC}"
     echo ""
     
-    docker exec -it pkg-tui python -m src.tui.main
+    docker exec -it pkg-tui python -m src.tui.app
 }
 
 tail_logs() {

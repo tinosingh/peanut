@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import os
-from functools import lru_cache
 
 from psycopg_pool import AsyncConnectionPool
 from pgvector.psycopg import register_vector
@@ -15,9 +14,9 @@ async def get_pool() -> AsyncConnectionPool:
     global _pool
     if _pool is None:
         db_url = os.environ["POSTGRES_URL"]
-        # Ensure psycopg3 driver prefix
-        if db_url.startswith("postgresql://"):
-            db_url = db_url.replace("postgresql://", "postgresql+psycopg://", 1)
+        # psycopg_pool uses standard postgresql:// DSN — strip SQLAlchemy +psycopg prefix if present
+        if db_url.startswith("postgresql+psycopg://"):
+            db_url = db_url.replace("postgresql+psycopg://", "postgresql://", 1)
         _pool = AsyncConnectionPool(db_url, min_size=2, max_size=5, open=False)
         await _pool.open()
         async with _pool.connection() as conn:

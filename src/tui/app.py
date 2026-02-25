@@ -1,7 +1,7 @@
 """PKG Textual application — main app class."""
 from __future__ import annotations
 
-from textual.app import App, ComposeResult
+from textual.app import App
 from textual.binding import Binding
 
 from src.tui.screens.dashboard import DashboardScreen

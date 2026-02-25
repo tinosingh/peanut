@@ -19,6 +19,9 @@ log = structlog.get_logger()
 
 EMBED_QUEUE: asyncio.Queue = asyncio.Queue(maxsize=500)
 EMBED_POLL_INTERVAL = 1   # seconds between DB polls
+# Tune based on available RAM and Ollama model size
+# Larger batches = more memory but faster throughput
+# 200 = ~50-100MB for nomic-embed-text
 EMBED_BATCH_SIZE = 200
 
 

@@ -30,6 +30,16 @@ router = APIRouter()
 
 # ── Cache ─────────────────────────────────────────────────────────────────────
 _cache: dict[tuple, tuple[float, Any]] = {}  # key -> (expires_at, value)
+_CACHE_MAX_SIZE = 1000  # Prevent unbounded growth
+
+
+def _cache_cleanup() -> None:
+    """Remove oldest entry if cache exceeds max size."""
+    global _cache
+    if len(_cache) > _CACHE_MAX_SIZE:
+        # Remove entry with earliest expiry
+        oldest_key = min(_cache.keys(), key=lambda k: _cache[k][0])
+        _cache.pop(oldest_key, None)
 
 
 def _cache_get(key: tuple) -> Any | None:
@@ -42,6 +52,7 @@ def _cache_get(key: tuple) -> Any | None:
 
 def _cache_set(key: tuple, value: Any, ttl: int) -> None:
     _cache[key] = (time.monotonic() + ttl, value)
+    _cache_cleanup()
 
 
 # ── Pydantic models ───────────────────────────────────────────────────────────

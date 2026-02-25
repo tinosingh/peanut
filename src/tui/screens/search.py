@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import os
-import subprocess
 import webbrowser
 import urllib.parse
 from pathlib import Path
@@ -76,12 +75,25 @@ class SearchScreen(Screen):
         except Exception as exc:
             self.notify(f"Search error: {exc}", severity="error")
 
+    def _selected_source_path(self) -> str:
+        """Return source_path of the currently focused row, or ''."""
+        table = self.query_one(DataTable)
+        if table.cursor_row is None or table.row_count == 0:
+            return ""
+        try:
+            row = table.get_row_at(table.cursor_row)
+            return str(row[1]) if len(row) > 1 else ""
+        except Exception:
+            return ""
+
     def action_open_editor(self) -> None:
         """E key: open selected result in Obsidian or $EDITOR."""
+        path = self._selected_source_path()
+        if not path:
+            self.notify("Select a result row first", severity="warning")
+            return
         vault_sync = os.getenv("VAULT_SYNC_PATH", "./vault-sync")
-        # Placeholder: get focused row path in full implementation
-        path = ""
-        if path and path.startswith(str(Path(vault_sync).resolve())):
+        if path.startswith(str(Path(vault_sync).resolve())):
             rel = os.path.relpath(path, vault_sync)
             vault_name = Path(vault_sync).name
             uri = f"obsidian://open?vault={vault_name}&file={urllib.parse.quote(rel)}"
@@ -91,8 +103,13 @@ class SearchScreen(Screen):
             self.run_worker([editor, path], thread=True)
 
     def action_open_raw(self) -> None:
+        """O key: open selected result source file in $PAGER."""
+        path = self._selected_source_path()
+        if not path:
+            self.notify("Select a result row first", severity="warning")
+            return
         pager = os.getenv("PAGER", "less")
-        self.notify(f"Open in {pager} (wired in Epic 2 integration)")
+        self.run_worker([pager, path], thread=True)
 
     def action_expand_inline(self) -> None:
         box = self.query_one("#expanded-chunk", Static)

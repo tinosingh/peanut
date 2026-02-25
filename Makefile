@@ -130,7 +130,16 @@ reindex:
 	$(COMPOSE) exec pkg-ingest python -m src.ingest.reindex
 
 rotate-keys:
-	@echo "Rotating API keys..."
-	@NEW_KEY=$$(python3 -c "import secrets; print(secrets.token_urlsafe(32))"); \
-	  sed -i.bak "s/^API_KEY=.*/API_KEY=$$NEW_KEY/" .env; \
-	  echo "New API key written to .env"
+	@echo "Rotating API keys (read + write scoped)..."
+	@NEW_READ=$$(python3 -c "import secrets; print('pkg_' + secrets.token_urlsafe(32))"); \
+	  NEW_WRITE=$$(python3 -c "import secrets; print('pkg_' + secrets.token_urlsafe(32))"); \
+	  if grep -q "^API_KEY_READ=" .env 2>/dev/null; then \
+	    sed -i.bak "s|^API_KEY_READ=.*|API_KEY_READ=$$NEW_READ|" .env; \
+	    sed -i.bak "s|^API_KEY_WRITE=.*|API_KEY_WRITE=$$NEW_WRITE|" .env; \
+	  else \
+	    echo "API_KEY_READ=$$NEW_READ" >> .env; \
+	    echo "API_KEY_WRITE=$$NEW_WRITE" >> .env; \
+	  fi; \
+	  echo "API_KEY_READ  (read-only)  = $$NEW_READ"; \
+	  echo "API_KEY_WRITE (read-write) = $$NEW_WRITE"; \
+	  echo "Keys written to .env — restart containers to apply"

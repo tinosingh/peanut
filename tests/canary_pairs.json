@@ -1,0 +1,17 @@
+[
+  {"name1": "Alice Smith",    "email1": "alice@acme.com",   "name2": "Bob Jones",     "email2": "bob@acme.com",   "is_duplicate": false, "note": "different names, same company"},
+  {"name1": "Carol White",    "email1": "carol@alpha.io",   "name2": "Carol Brown",   "email2": "carol@beta.io",  "is_duplicate": false, "note": "same first name, different surname+domain"},
+  {"name1": "David Lee",      "email1": "david@corp.com",   "name2": "Daniel Li",     "email2": "daniel@corp.com","is_duplicate": false, "note": "similar names, confirmed different people"},
+  {"name1": "Eve Johnson",    "email1": "eve@x.com",        "name2": "Eva Johnston",  "email2": "eva@y.com",      "is_duplicate": false, "note": "similar but distinct"},
+  {"name1": "Frank Mueller",  "email1": "frank@de.co",      "name2": "Franz Müller",  "email2": "franz@at.co",    "is_duplicate": false, "note": "German name variants, different orgs"},
+  {"name1": "Grace Hopper",   "email1": "grace@navy.mil",   "name2": "Grace Kelly",   "email2": "grace@palace.mc","is_duplicate": false, "note": "famous shared first name"},
+  {"name1": "Han Solo",       "email1": "han@falcon.com",   "name2": "Han Lee",       "email2": "han@seoul.kr",   "is_duplicate": false, "note": "common Korean surname vs fictional"},
+  {"name1": "Ivan Petrov",    "email1": "ivan@ru.example",  "name2": "Ivan Sidorov",  "email2": "ivan@ua.example","is_duplicate": false, "note": "common Russian first name"},
+  {"name1": "Jane Doe",       "email1": "jane.doe@test.com","name2": "John Doe",      "email2": "john.doe@test.com","is_duplicate": false,"note": "canonical distinct pair same domain"},
+  {"name1": "Karen Scott",    "email1": "karen@scott.net",  "name2": "Kevin Scott",   "email2": "kevin@scott.net","is_duplicate": false, "note": "sibling-style names same domain"},
+  {"name1": "Laura Palmer",   "email1": "laura@twin-peaks.com","name2":"Lara Palmer", "email2": "lara@twin-peaks.com","is_duplicate": false,"note": "Laura vs Lara, same domain"},
+  {"name1": "Michael Scott",  "email1": "michael@dunder.com","name2":"Michael Jordan","email2":"mj@bulls.com",    "is_duplicate": false, "note": "famous distinct Michaels"},
+  {"name1": "Nancy Drew",     "email1": "nancy@sleuth.org", "name2": "Nancy Wheeler", "email2": "nancy@hawkins.gov","is_duplicate":false, "note": "fictional distinct Nancys"},
+  {"name1": "Oscar Wilde",    "email1": "oscar@dublin.ie",  "name2": "Oscar Martinez","email2":"oscar@dunder.com","is_duplicate": false, "note": "cross-domain Oscars"},
+  {"name1": "Paul Simon",     "email1": "paul@garfunkel.com","name2":"Paul McCartney","email2":"paul@beatles.com","is_duplicate": false, "note": "distinct famous Pauls"}
+]

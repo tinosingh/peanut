@@ -83,3 +83,50 @@ ingested_at: "{ingested_at.isoformat()}"
     os.chmod(path, stat.S_IRUSR | stat.S_IRGRP | stat.S_IROTH)  # 444
     log.debug("vault_document_written", path=str(path))
     return path
+
+
+def update_document_wikilinks(
+    vault_sync_path: str,
+    doc_id: str,
+    mentions: list[str],
+) -> Path | None:
+    """Append [[Person/Name]] Wikilinks to a document note from :MENTIONS edges.
+
+    Reads the existing document note (any file matching *_<doc_id[:8]>.md),
+    rewrites the Wikilinks section, and re-sets chmod 444.
+
+    Args:
+        vault_sync_path: Root of vault-sync directory.
+        doc_id:          Document UUID.
+        mentions:        List of person display_names from FalkorDB :MENTIONS edges.
+
+    Returns:
+        Path to the updated file, or None if not found.
+    """
+    docs_dir = Path(vault_sync_path) / "documents"
+    suffix = f"_{doc_id[:8]}.md"
+    matches = list(docs_dir.glob(f"*{suffix}"))
+    if not matches:
+        log.warning("vault_doc_not_found_for_wikilinks", doc_id=doc_id)
+        return None
+
+    path = matches[0]
+    # chmod +w temporarily
+    os.chmod(path, stat.S_IRUSR | stat.S_IWUSR | stat.S_IRGRP | stat.S_IROTH)
+
+    existing = path.read_text(encoding="utf-8")
+    # Strip any existing Wikilinks section
+    marker = "\n## Mentions\n"
+    if marker in existing:
+        existing = existing[: existing.index(marker)]
+
+    if mentions:
+        wikilinks = "\n".join(
+            f"- [[persons/{_safe_filename(name)}]]" for name in sorted(mentions)
+        )
+        existing = existing.rstrip("\n") + f"\n{marker}{wikilinks}\n"
+
+    path.write_text(existing, encoding="utf-8")
+    os.chmod(path, stat.S_IRUSR | stat.S_IRGRP | stat.S_IROTH)  # 444
+    log.debug("vault_wikilinks_updated", doc_id=doc_id, count=len(mentions))
+    return path

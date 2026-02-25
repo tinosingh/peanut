@@ -1,5 +1,4 @@
 """TUI controller entry point — FastAPI + Textual."""
-import asyncio
 import os
 
 import uvicorn
@@ -14,6 +13,15 @@ app.include_router(search_router)
 @app.get("/health")
 async def health() -> dict:
     return {"status": "ok"}
+
+
+@app.on_event("startup")
+async def _mount_mcp() -> None:
+    """Lazily mount MCP server at /mcp/ if SDK is available (T-034)."""
+    from src.api.mcp_server import get_mcp_app
+    mcp = get_mcp_app()
+    if mcp is not None:
+        app.mount("/mcp", mcp)
 
 
 def main() -> None:

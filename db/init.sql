@@ -34,9 +34,11 @@ CREATE INDEX IF NOT EXISTS persons_email_trgm_idx
     ON persons USING GIN (email gin_trgm_ops);
 
 -- ── Chunks ─────────────────────────────────────────────────────────────────
-CREATE TYPE IF NOT EXISTS embedding_status_enum AS ENUM (
-    'pending', 'processing', 'done', 'failed'
-);
+DO $$ BEGIN
+    CREATE TYPE embedding_status_enum AS ENUM ('pending', 'processing', 'done', 'failed');
+EXCEPTION
+    WHEN duplicate_object THEN NULL;
+END $$;
 
 CREATE TABLE IF NOT EXISTS chunks (
     id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),

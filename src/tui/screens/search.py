@@ -1,116 +1,127 @@
-"""Search screen — BM25 query with E/O/Enter key bindings."""
+"""Search view — hybrid BM25 + vector + CrossEncoder."""
 from __future__ import annotations
 
 import os
-import urllib.parse
-import webbrowser
-from pathlib import Path
 
+import httpx
 from textual.app import ComposeResult
 from textual.binding import Binding
-from textual.screen import Screen
-from textual.widgets import DataTable, Footer, Header, Input, Static
+from textual.widget import Widget
+from textual.widgets import DataTable, Input, Static
 
 
-class SearchScreen(Screen):
-    """Hybrid search (BM25 in Epic 1, +ANN in Epic 2).
+class SearchView(Widget):
+    """Hybrid search interface."""
 
-    Key bindings:
-      E  — open in Obsidian (obsidian:// URI) or $EDITOR
-      O  — open raw path in $PAGER
-      Enter — expand chunk inline
+    DEFAULT_CSS = """
+    SearchView {
+        background: #1c1c1e;
+        height: 1fr;
+        layout: vertical;
+    }
+
+    #search-input {
+        margin: 1 2 0 2;
+        border: solid #48484a;
+    }
+
+    #search-input:focus { border: solid #0a84ff; }
+
+    #search-hint {
+        color: #48484a;
+        height: 1;
+        padding: 0 2;
+        margin-bottom: 1;
+    }
+
+    #results-table {
+        margin: 0 2;
+        height: 1fr;
+        border: solid #3a3a3c;
+    }
+
+    #search-status {
+        background: #2c2c2e;
+        color: #636366;
+        height: 1;
+        padding: 0 2;
+        border-top: solid #3a3a3c;
+        dock: bottom;
+    }
     """
 
     BINDINGS = [
-        Binding("?",      "app.toggle_help", "Help"),
-        Binding("escape", "app.pop_screen",  "Back"),
-        Binding("e",      "open_editor",     "Open in Obsidian/$EDITOR"),
-        Binding("o",      "open_raw",        "Open in $PAGER"),
-        Binding("enter",  "expand_inline",   "Expand chunk"),
+        Binding("enter", "expand", "Expand", show=True),
     ]
 
-    DEFAULT_CSS = """
-    SearchScreen { layout: vertical; }
-    #search-input { dock: top; margin: 1; }
-    #results-table { height: 1fr; }
-    #expanded-chunk { height: 8; border: solid $primary; padding: 0 1; display: none; }
-    """
+    _last_snippets: dict[str, str] = {}
 
     def compose(self) -> ComposeResult:
-        yield Header(show_clock=True)
-        yield Input(placeholder="Search your documents…", id="search-input")
-        yield DataTable(id="results-table", zebra_stripes=True)
-        yield Static("", id="expanded-chunk")
-        yield Footer()
+        yield Input(placeholder="Search your knowledge base…", id="search-input")
+        yield Static("[#48484a]↵ search  ·  enter=expand[/#48484a]", id="search-hint")
+        tbl = DataTable(id="results-table", zebra_stripes=True)
+        yield tbl
+        yield Static("[#636666]ready[/#636666]", id="search-status")
 
     def on_mount(self) -> None:
-        table = self.query_one(DataTable)
-        table.add_columns("#", "SOURCE FILE", "SENDER", "BM25", "VEC", "RERANK")
+        tbl = self.query_one(DataTable)
+        tbl.add_columns("#", "FILE", "SENDER", "SNIPPET", "BM25", "VEC", "RERANK")
+
+    async def on_activated(self) -> None:
+        self.query_one("#search-input", Input).focus()
 
     async def on_input_submitted(self, event: Input.Submitted) -> None:
-        await self._run_search(event.value)
+        query = event.value.strip()
+        if not query:
+            return
+        self.query_one("#search-status", Static).update("[#0a84ff]searching…[/#0a84ff]")
+        self.run_worker(self._search(query), exclusive=True)
 
-    async def _run_search(self, query: str) -> None:
-        """POST /search and populate the results table."""
-        import httpx
-        table = self.query_one(DataTable)
-        table.clear()
+    async def _search(self, query: str) -> None:
         try:
-            api_url = os.getenv("API_BASE_URL", "http://localhost:8000")
+            base = f"http://localhost:{os.getenv('API_PORT', '8000')}"
+            headers = {}
+            key = os.getenv("API_KEY_READ", "")
+            if key:
+                headers["X-API-Key"] = key
+
             async with httpx.AsyncClient(timeout=30) as client:
-                resp = await client.post(f"{api_url}/search", json={"q": query, "limit": 10})
+                resp = await client.post(
+                    f"{base}/search",
+                    json={"q": query, "limit": 20},
+                    headers=headers,
+                )
                 resp.raise_for_status()
                 data = resp.json()
-            for i, result in enumerate(data.get("results", []), 1):
-                table.add_row(
-                    str(i),
-                    result.get("source_path", ""),
-                    result.get("sender", "—"),
-                    f"{result.get('bm25_score', 0):.2f}",
-                    f"{result.get('vector_score', 0):.2f}",
-                    f"{result.get('rerank_score', 0):.2f}",
-                )
-            if data.get("degraded"):
-                self.notify("[DEGRADED — BM25 only]", severity="warning")
+
+            results = data.get("results", [])
+            degraded = data.get("degraded", False)
+
+            tbl = self.query_one(DataTable)
+            tbl.clear()
+            self._last_snippets.clear()
+
+            for i, r in enumerate(results, 1):
+                fname = (r.get("source_path") or "").split("/")[-1] or "?"
+                sender = r.get("sender") or "—"
+                snippet = (r.get("snippet") or "")[:60].replace("\n", " ")
+                bm25 = f"{r.get('bm25_score', 0):.3f}"
+                vec = f"{r.get('vector_score', 0):.3f}"
+                rerank = f"{r.get('rerank_score', 0):.3f}"
+                self._last_snippets[str(i)] = r.get("snippet", "")
+                tbl.add_row(str(i), fname, sender, snippet, bm25, vec, rerank, key=str(i))
+
+            suffix = "  [#ff9f0a]· degraded (BM25 only)[/#ff9f0a]" if degraded else ""
+            self.query_one("#search-status", Static).update(
+                f"[#636366]{len(results)} results{suffix}[/#636366]"
+            )
         except Exception as exc:
-            self.notify(f"Search error: {exc}", severity="error")
+            self.query_one("#search-status", Static).update(f"[#ff453a]{exc}[/#ff453a]")
 
-    def _selected_source_path(self) -> str:
-        """Return source_path of the currently focused row, or ''."""
-        table = self.query_one(DataTable)
-        if table.cursor_row is None or table.row_count == 0:
-            return ""
-        try:
-            row = table.get_row_at(table.cursor_row)
-            return str(row[1]) if len(row) > 1 else ""
-        except Exception:
-            return ""
-
-    def action_open_editor(self) -> None:
-        """E key: open selected result in Obsidian or $EDITOR."""
-        path = self._selected_source_path()
-        if not path:
-            self.notify("Select a result row first", severity="warning")
+    def action_expand(self) -> None:
+        tbl = self.query_one(DataTable)
+        if tbl.cursor_row < 0:
             return
-        vault_sync = os.getenv("VAULT_SYNC_PATH", "./vault-sync")
-        if path.startswith(str(Path(vault_sync).resolve())):
-            rel = os.path.relpath(path, vault_sync)
-            vault_name = Path(vault_sync).name
-            uri = f"obsidian://open?vault={vault_name}&file={urllib.parse.quote(rel)}"
-            webbrowser.open(uri)
-        else:
-            editor = os.getenv("EDITOR", "less")
-            self.run_worker([editor, path], thread=True)
-
-    def action_open_raw(self) -> None:
-        """O key: open selected result source file in $PAGER."""
-        path = self._selected_source_path()
-        if not path:
-            self.notify("Select a result row first", severity="warning")
-            return
-        pager = os.getenv("PAGER", "less")
-        self.run_worker([pager, path], thread=True)
-
-    def action_expand_inline(self) -> None:
-        box = self.query_one("#expanded-chunk", Static)
-        box.display = not box.display
+        idx = str(tbl.cursor_row + 1)
+        snippet = self._last_snippets.get(idx, "")
+        self.notify(f"{snippet[:100]}…", severity="information")

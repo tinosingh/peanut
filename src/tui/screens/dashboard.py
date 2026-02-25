@@ -1,148 +1,149 @@
-"""Dashboard screen — service health, chunk counts, outbox depth, error log."""
+"""Dashboard view — system health + pipeline metrics."""
 from __future__ import annotations
-
-import os
 
 from textual.app import ComposeResult
 from textual.binding import Binding
-from textual.screen import Screen
-from textual.widgets import Footer, Header, Static
+from textual.widgets import DataTable, Static
+from textual.widget import Widget
+
+from src.tui.app import MetricCard
 
 
-class DashboardScreen(Screen):
-    """Main dashboard: service health + pipeline status.
+class DashboardView(Widget):
+    """Main dashboard: metric cards + pipeline table."""
 
-    Auto-refreshes every 10s.
+    DEFAULT_CSS = """
+    DashboardView {
+        background: #1c1c1e;
+        height: 1fr;
+        layout: vertical;
+    }
+
+    #health-bar {
+        background: #2c2c2e;
+        color: #636366;
+        height: 1;
+        padding: 0 2;
+        border-bottom: solid #3a3a3c;
+    }
+
+    .metric-row {
+        layout: horizontal;
+        height: 9;
+        margin: 1 2;
+    }
+
+    #pipeline-table {
+        margin: 0 2;
+        height: 1fr;
+        border: solid #3a3a3c;
+    }
+
+    #pipeline-label {
+        color: #636366;
+        text-style: bold;
+        height: 1;
+        padding: 0 2;
+        margin-top: 1;
+        background: #1c1c1e;
+    }
     """
 
     BINDINGS = [
-        Binding("?",      "app.toggle_help", "Help"),
-        Binding("r",      "refresh_now",     "Refresh"),
-        Binding("i",      "app.goto_intake", "Intake"),
-        Binding("/",      "app.goto_search", "Search"),
+        Binding("r", "refresh", "Refresh", show=True),
     ]
 
-    DEFAULT_CSS = """
-    DashboardScreen { layout: vertical; }
-    #header-panel { height: 3; padding: 0 1; }
-    #stats-panel  { height: 6; border: solid $primary; padding: 1; }
-    #errors-panel { height: 1fr; border: solid $error; padding: 1; }
-    """
-
     def compose(self) -> ComposeResult:
-        yield Header(show_clock=True)
-        yield Static("PKG  ·  Personal Knowledge Graph  ·  v0.1.0", id="header-panel")
-        yield Static("Loading…", id="stats-panel")
-        yield Static("No errors", id="errors-panel")
-        yield Footer()
+        yield Static("", id="health-bar")
+        yield Static("METRICS", id="pipeline-label")
+        with Static(classes="metric-row"):
+            yield MetricCard("embedded", "—", id="m-embedded")
+            yield MetricCard("pending", "—", id="m-pending")
+            yield MetricCard("outbox", "—", id="m-outbox")
+            yield MetricCard("dead letters", "—", id="m-dead")
+        yield Static("PIPELINE", id="pipeline-label")
+        tbl = DataTable(id="pipeline-table", show_cursor=False)
+        yield tbl
+        yield Static("", id="status-bar", classes="status-bar")
 
     def on_mount(self) -> None:
-        self.run_worker(self._refresh(), thread=False)
-        self.set_interval(10, self._refresh_sync)
+        tbl = self.query_one("#pipeline-table", DataTable)
+        tbl.add_columns("CHECK", "STATUS", "DETAIL")
+        self.set_interval(30.0, self._refresh_sync)
+        self.run_worker(self._load(), exclusive=True)
+
+    async def on_activated(self) -> None:
+        await self._load()
 
     def _refresh_sync(self) -> None:
-        self.run_worker(self._refresh(), thread=False)
+        self.run_worker(self._load(), exclusive=True)
 
-    async def _refresh(self) -> None:
-        import httpx
-        api_url = os.getenv("API_BASE_URL", "http://localhost:8000")
-        stats = self.query_one("#stats-panel", Static)
-        errors = self.query_one("#errors-panel", Static)
-        try:
-            async with httpx.AsyncClient(timeout=5) as client:
-                health = await client.get(f"{api_url}/health")
-                health.raise_for_status()
-        except Exception as exc:
-            stats.update(f"[ERROR] API unreachable: {exc}")
-            return
+    def action_refresh(self) -> None:
+        self.run_worker(self._load(), exclusive=True)
 
+    async def _load(self) -> None:
         try:
             from src.shared.db import get_pool
             pool = await get_pool()
             async with pool.connection() as conn:
-                chunk_rows = await (await conn.execute(
+                rows = await (await conn.execute(
                     "SELECT embedding_status, COUNT(*) FROM chunks GROUP BY embedding_status"
                 )).fetchall()
-                outbox_row = await (await conn.execute(
+                outbox = await (await conn.execute(
                     "SELECT COUNT(*) FROM outbox WHERE processed_at IS NULL AND NOT failed"
                 )).fetchone()
-                dead_row = await (await conn.execute(
+                dead = await (await conn.execute(
                     "SELECT COUNT(*) FROM outbox WHERE failed = true"
                 )).fetchone()
 
-            chunk_counts = {r[0]: r[1] for r in chunk_rows}
-            total = sum(chunk_counts.values())
-            done = chunk_counts.get("done", 0)
-            pending = chunk_counts.get("pending", 0)
-            failed = chunk_counts.get("failed", 0)
-            outbox_depth = outbox_row[0] if outbox_row else 0
-            dead_letters = dead_row[0] if dead_row else 0
+            counts = {r[0]: r[1] for r in rows}
+            embedded = counts.get("done", 0)
+            pending = counts.get("pending", 0)
+            failed = counts.get("failed", 0)
+            outbox_n = outbox[0] if outbox else 0
+            dead_n = dead[0] if dead else 0
+            total = sum(counts.values()) or 1
 
-            stats.update(
-                f"Chunks: {total} total  |  {done} embedded  |  {pending} pending  |  {failed} failed\n"
-                f"Outbox depth: {outbox_depth}  |  Dead-letters: {dead_letters}  |  API: OK"
+            self.query_one("#m-embedded", MetricCard).update_metric(
+                f"{embedded:,}", "#30d158" if embedded > 0 else "#636366"
             )
-            error_lines = []
-            if dead_letters > 0:
-                error_lines.append(f"[WARNING] {dead_letters} dead-lettered outbox events — check logs")
+            self.query_one("#m-pending", MetricCard).update_metric(
+                f"{pending:,}", "#ff9f0a" if pending > 0 else "#636366"
+            )
+            self.query_one("#m-outbox", MetricCard).update_metric(
+                f"{outbox_n:,}", "#ff9f0a" if outbox_n > 10 else "#636366"
+            )
+            self.query_one("#m-dead", MetricCard).update_metric(
+                f"{dead_n:,}", "#ff453a" if dead_n > 0 else "#636366"
+            )
 
-            # Canary guard: check for incorrectly merged known-distinct person pairs (Story 3.3)
-            canary_violations = await _check_canary_guard(pool)
-            if canary_violations:
-                error_lines.append(
-                    f"[CANARY VIOLATION] {len(canary_violations)} known-distinct pairs share merged_into — "
-                    "entity resolution is broken. Check threshold."
-                )
+            try:
+                import os
+                import socket
+                fk_host = os.getenv("FALKORDB_HOST", "pkg-graph")
+                fk_port = int(os.getenv("FALKORDB_PORT", "6379"))
+                with socket.create_connection((fk_host, fk_port), timeout=1):
+                    graph_ok = True
+            except Exception:
+                graph_ok = False
 
-            errors.update("\n".join(error_lines) if error_lines else "No errors")
+            pg_badge = "[#30d158]● postgres[/#30d158]"
+            graph_badge = "[#30d158]● graph[/#30d158]" if graph_ok else "[#ff453a]● graph[/#ff453a]"
+            self.query_one("#health-bar", Static).update(
+                f"{pg_badge}  {graph_badge}  [#636366]·  {embedded:,} embedded[/#636366]"
+            )
+
+            tbl = self.query_one("#pipeline-table", DataTable)
+            tbl.clear()
+            pct = (embedded / total * 100) if total else 0
+            tbl.add_row("Embedding", f"[#30d158]{pct:.0f}%[/#30d158]", f"{embedded:,} / {total:,} chunks")
+            tbl.add_row("Failed", f"[#ff453a]{failed:,}[/#ff453a]" if failed else "[#636366]0[/#636366]", "chunks")
+            tbl.add_row("Outbox", f"[#ff9f0a]{outbox_n:,}[/#ff9f0a]" if outbox_n else "[#636366]0[/#636366]", "pending")
+            tbl.add_row("Dead Letter", f"[#ff453a]{dead_n:,}[/#ff453a]" if dead_n else "[#636366]0[/#636366]", "failed")
+
+            self.query_one("#status-bar", Static).update(
+                "[#636366]last refresh: just now  ·  press r[/#636366]"
+            )
+
         except Exception as exc:
-            stats.update(f"DB unavailable: {exc}")
-
-    def action_refresh_now(self) -> None:
-        self.run_worker(self._refresh(), thread=False)
-
-
-async def _check_canary_guard(pool) -> list[dict]:
-    """Return canary pairs that violate the known-distinct invariant (Story 3.3).
-
-    Reads tests/canary_pairs.json. For each known-distinct pair (name_a, name_b),
-    checks if either person has a merged_into FK pointing to the other — which would
-    mean the resolution algorithm merged people it should not have.
-    """
-    import json
-    from pathlib import Path
-
-    canary_path = Path(__file__).parent.parent.parent.parent / "tests" / "canary_pairs.json"
-    if not canary_path.exists():
-        return []
-
-    try:
-        pairs = json.loads(canary_path.read_text())
-    except Exception:
-        return []
-
-    violations = []
-    try:
-        async with pool.connection() as conn:
-            for pair in pairs:
-                name_a = pair.get("name_a", "")
-                name_b = pair.get("name_b", "")
-                if not name_a or not name_b:
-                    continue
-                row = await (await conn.execute(
-                    """
-                    SELECT a.id, a.merged_into, b.id AS b_id
-                    FROM persons a
-                    JOIN persons b ON b.display_name = %s
-                    WHERE a.display_name = %s
-                      AND (a.merged_into = b.id OR b.merged_into = a.id)
-                    LIMIT 1
-                    """,
-                    (name_b, name_a),
-                )).fetchone()
-                if row:
-                    violations.append({"name_a": name_a, "name_b": name_b})
-    except Exception:
-        pass
-
-    return violations
+            self.query_one("#status-bar", Static).update(f"[#ff453a]error: {exc}[/#ff453a]")

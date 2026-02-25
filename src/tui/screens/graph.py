@@ -1,238 +1,143 @@
-"""Knowledge graph screen — Textual Tree widget over FalkorDB subgraph.
-
-Navigate the graph with:
-  Enter     — drill into selected node (set as new root)
-  Backspace — return to previous root
-  R         — reload from FalkorDB
-  X         — export current subgraph as graph.html (Vis.js) and open in browser
-"""
+"""Graph view — FalkorDB knowledge graph navigation."""
 from __future__ import annotations
 
-import webbrowser
-from pathlib import Path
+import os
 
-import structlog
 from textual.app import ComposeResult
 from textual.binding import Binding
-from textual.screen import Screen
-from textual.widgets import Footer, Header, Static, Tree
-from textual.widgets.tree import TreeNode
+from textual.widget import Widget
+from textual.widgets import Static, Tree
 
-log = structlog.get_logger()
-
-_EXPORT_PATH = Path("./data/graph.html")
+_COLOR = {"Person": "#64d2ff", "Document": "#30d158", "Concept": "#ff9f0a"}
 
 
-class GraphScreen(Screen):
-    """Cypher-driven subgraph rendered as a navigable Textual Tree."""
-
-    BINDINGS = [
-        Binding("r",         "reload",        "Reload"),
-        Binding("x",         "export_graph",  "Export HTML"),
-        Binding("backspace", "go_back",        "Back"),
-        Binding("?",         "app.toggle_help", "Help"),
-        Binding("q",         "app.quit",        "Quit"),
-    ]
+class GraphView(Widget):
+    """FalkorDB graph tree with drill-down navigation."""
 
     DEFAULT_CSS = """
-    GraphScreen {
+    GraphView {
+        background: #1c1c1e;
+        height: 1fr;
         layout: vertical;
     }
-    GraphScreen > #graph-tree {
-        border: round $accent;
-        height: 1fr;
-        padding: 1;
-    }
-    GraphScreen > #status-bar {
+
+    #graph-header {
+        background: #2c2c2e;
+        color: #8e8e93;
         height: 1;
-        background: $surface;
-        padding: 0 1;
+        padding: 0 2;
+        border-bottom: solid #3a3a3c;
+    }
+
+    #graph-tree {
+        height: 1fr;
+        margin: 1 2;
+        border: solid #3a3a3c;
+        background: #1c1c1e;
+    }
+
+    #graph-status {
+        background: #2c2c2e;
+        color: #636366;
+        height: 1;
+        padding: 0 2;
+        border-top: solid #3a3a3c;
+        dock: bottom;
     }
     """
 
-    def __init__(self, root_email: str | None = None) -> None:
-        super().__init__()
-        self._root_email = root_email
-        self._history: list[str] = []
-        self._current_nodes: list[dict] = []
-        self._current_edges: list[dict] = []
+    BINDINGS = [
+        Binding("r", "reload", "Reload"),
+        Binding("backspace", "go_back", "Back"),
+        Binding("enter", "drill_in", "Drill in"),
+    ]
+
+    _history: list[str] = []
+    _root_email: str | None = None
 
     def compose(self) -> ComposeResult:
-        yield Header(show_clock=True)
-        yield Tree("Knowledge Graph", id="graph-tree")
-        yield Static("", id="status-bar")
-        yield Footer()
+        yield Static("[#8e8e93]Knowledge Graph[/#8e8e93]", id="graph-header")
+        tree: Tree[str] = Tree("PKG", id="graph-tree")
+        tree.root.expand()
+        yield tree
+        yield Static("[#636666]loading…[/#636666]", id="graph-status")
 
     def on_mount(self) -> None:
-        self.run_worker(self._load_graph, exclusive=True)
+        self.run_worker(self._load(None), exclusive=True)
 
-    async def _load_graph(self) -> None:
-        tree = self.query_one(Tree)
-        tree.clear()
-        status = self.query_one("#status-bar", Static)
-        status.update("Loading graph…")
+    async def on_activated(self) -> None:
+        await self._load(self._root_email)
 
-        root_email = self._root_email
-        nodes, edges = await _fetch_subgraph(root_email)
-        self._current_nodes = nodes
-        self._current_edges = edges
-
-        if not nodes:
-            tree.root.set_label("No graph data — ingest some documents first")
-            status.update("Graph empty")
-            return
-
-        # Build adjacency map
-        adj: dict[str, list[tuple[str, str, str]]] = {}  # id -> [(edge_label, target_id, target_label)]
-        for e in edges:
-            adj.setdefault(e["from"], []).append((e.get("label", ""), e["to"], ""))
-
-        # Find label map
-        id_to_node = {n["id"]: n for n in nodes}
-
-        # Render root nodes (Persons with no incoming edges or the root_email node)
-        root_ids = [
-            n["id"] for n in nodes
-            if n.get("group") == "Person"
-            and (root_email is None or n.get("label", "") == root_email)
-        ]
-        if not root_ids:
-            root_ids = [nodes[0]["id"]]
-
-        tree.root.set_label("Subgraph")
-        tree.root.expand()
-
-        for rid in root_ids[:10]:  # cap at 10 roots for readability
-            n = id_to_node.get(rid, {})
-            root_node = tree.root.add(
-                f"[bold cyan]({n.get('group', '')})[/bold cyan] {n.get('label', rid)}",
-                data=rid,
-            )
-            _populate_tree(root_node, rid, adj, id_to_node, depth=0, max_depth=3, visited=set())
-            root_node.expand()
-
-        status.update(f"{len(nodes)} nodes · {len(edges)} edges · root: {root_email or 'all'}")
-
-    def on_tree_node_selected(self, event: Tree.NodeSelected) -> None:
-        """Enter on a node drills into it as the new root."""
-        node_id = event.node.data
-        if node_id:
-            if self._root_email:
-                self._history.append(self._root_email)
-            self._root_email = node_id
-            self.run_worker(self._load_graph, exclusive=True)
+    def action_reload(self) -> None:
+        self._history.clear()
+        self._root_email = None
+        self.run_worker(self._load(None), exclusive=True)
 
     def action_go_back(self) -> None:
         if self._history:
             self._root_email = self._history.pop()
-            self.run_worker(self._load_graph, exclusive=True)
+            self.run_worker(self._load(self._root_email), exclusive=True)
 
-    def action_reload(self) -> None:
-        self.run_worker(self._load_graph, exclusive=True)
+    def action_drill_in(self) -> None:
+        tree = self.query_one(Tree)
+        node = tree.cursor_node
+        if node and node.data:
+            if self._root_email:
+                self._history.append(self._root_email)
+            self._root_email = node.data
+            self.run_worker(self._load(node.data), exclusive=True)
 
-    def action_export_graph(self) -> None:
-        self.run_worker(self._do_export, thread=True)
+    async def _load(self, root_email: str | None) -> None:
+        try:
+            import falkordb
+            host = os.getenv("FALKORDB_HOST", "pkg-graph")
+            port = int(os.getenv("FALKORDB_PORT", "6379"))
+            client = falkordb.FalkorDB(host=host, port=port)
+            g = client.select_graph("pkg")
 
-    def _do_export(self) -> None:
-        from src.tui.screens.graph_export import render_visjs
+            if root_email:
+                result = g.query(
+                    "MATCH (p:Person {email: $email})-[r]->(n) "
+                    "RETURN p.email, labels(p)[0], coalesce(p.name, p.email, p.id), "
+                    "type(r), n.id, labels(n)[0], coalesce(n.name, n.title, n.email, n.id) LIMIT 50",
+                    {"email": root_email}
+                )
+            else:
+                result = g.query(
+                    "MATCH (a)-[r]->(b) "
+                    "RETURN a.id, labels(a)[0], coalesce(a.name, a.title, a.email, a.id), "
+                    "type(r), b.id, labels(b)[0], coalesce(b.name, b.title, b.email, b.id) LIMIT 100"
+                )
 
-        if not self._current_nodes:
-            self.call_from_thread(
-                self.notify, "No graph data to export", severity="warning"
+            rows = list(result.result_set)
+            tree = self.query_one(Tree)
+            tree.clear()
+            root_label = root_email or "Knowledge Graph"
+            root_node = tree.root
+            root_node.set_label(f"[bold #f2f2f7]{root_label}[/bold #f2f2f7]")
+            root_node.expand()
+
+            seen: dict[str, object] = {}
+            for row in rows:
+                from_id, from_group, from_label, edge, to_id, to_group, to_label = row
+                fc = _COLOR.get(from_group or "", "#8e8e93")
+                tc = _COLOR.get(to_group or "", "#8e8e93")
+
+                parent = seen.get(str(from_id))
+                if parent is None:
+                    parent = root_node.add(
+                        f"[{fc}]{from_label or from_id}[/{fc}]", data=str(from_id)
+                    )
+                    seen[str(from_id)] = parent
+
+                parent.add_leaf(
+                    f"[{tc}]{to_label or to_id}[/{tc}]  [#3a3a3c]{edge}[/#3a3a3c]",
+                    data=str(to_id)
+                )
+
+            self.query_one("#graph-status", Static).update(
+                f"[#636366]{len(rows)} edges  ·  enter=drill  backspace=back[/#636366]"
             )
-            return
 
-        html = render_visjs(self._current_nodes, self._current_edges)
-        _EXPORT_PATH.parent.mkdir(parents=True, exist_ok=True)
-        _EXPORT_PATH.write_text(html, encoding="utf-8")
-        webbrowser.open(f"file://{_EXPORT_PATH.resolve()}")
-        self.call_from_thread(
-            self.notify, f"Graph exported to {_EXPORT_PATH}", severity="information"
-        )
-
-
-def _populate_tree(
-    node: TreeNode,
-    node_id: str,
-    adj: dict,
-    id_to_node: dict,
-    depth: int,
-    max_depth: int,
-    visited: set,
-) -> None:
-    """Recursively add children to a tree node up to max_depth."""
-    if depth >= max_depth or node_id in visited:
-        return
-    visited = visited | {node_id}
-    for edge_label, child_id, _ in adj.get(node_id, []):
-        child = id_to_node.get(child_id, {})
-        group = child.get("group", "")
-        label = child.get("label", child_id)
-        color = {"Person": "cyan", "Document": "green", "Concept": "yellow"}.get(group, "white")
-        child_node = node.add(
-            f"[{color}][:{edge_label}][/{color}] → [{color}]({group})[/{color}] {label}",
-            data=child_id,
-        )
-        _populate_tree(child_node, child_id, adj, id_to_node, depth + 1, max_depth, visited)
-
-
-async def _fetch_subgraph(
-    root_email: str | None,
-    limit: int = 100,
-) -> tuple[list[dict], list[dict]]:
-    """Fetch a subgraph from FalkorDB centred on root_email.
-
-    Falls back to an empty result if FalkorDB is unavailable.
-    """
-    import os
-
-    try:
-        from falkordb import FalkorDB
-
-        host = os.getenv("FALKORDB_HOST", "pkg-graph")
-        port = int(os.getenv("FALKORDB_PORT", "6379"))
-        db = FalkorDB(host=host, port=port)
-        graph = db.select_graph("pkg")
-
-        if root_email:
-            query = """
-            MATCH (p:Person {email: $email})-[r]->(n)
-            RETURN p.email AS from_id, 'Person' AS from_group, p.email AS from_label,
-                   type(r) AS edge_label,
-                   n.id AS to_id,
-                   labels(n)[0] AS to_group,
-                   coalesce(n.name, n.title, n.email, n.id) AS to_label
-            LIMIT $limit
-            """
-            result = graph.query(query, {"email": root_email, "limit": limit})
-        else:
-            query = """
-            MATCH (a)-[r]->(b)
-            RETURN a.id AS from_id,
-                   labels(a)[0] AS from_group,
-                   coalesce(a.name, a.title, a.email, a.id) AS from_label,
-                   type(r) AS edge_label,
-                   b.id AS to_id,
-                   labels(b)[0] AS to_group,
-                   coalesce(b.name, b.title, b.email, b.id) AS to_label
-            LIMIT $limit
-            """
-            result = graph.query(query, {"limit": limit})
-
-        nodes: dict[str, dict] = {}
-        edges: list[dict] = []
-
-        for row in result.result_set:
-            from_id, from_group, from_label, edge_label, to_id, to_group, to_label = row
-            if from_id and from_id not in nodes:
-                nodes[from_id] = {"id": from_id, "group": from_group or "", "label": from_label or from_id}
-            if to_id and to_id not in nodes:
-                nodes[to_id] = {"id": to_id, "group": to_group or "", "label": to_label or to_id}
-            if from_id and to_id:
-                edges.append({"from": from_id, "to": to_id, "label": edge_label or ""})
-
-        return list(nodes.values()), edges
-
-    except Exception as exc:
-        log.warning("graph_fetch_failed", error=str(exc))
-        return [], []
+        except Exception as exc:
+            self.query_one("#graph-status", Static).update(f"[#ff453a]{exc}[/#ff453a]")

@@ -196,7 +196,7 @@ check_health() {
 
 launch_tui() {
     # Check if stack is running
-    if ! docker-compose ps pkg-tui 2>/dev/null | grep -q "Up"; then
+    if ! docker inspect pkg-tui --format="{{.State.Running}}" 2>/dev/null | grep -q "true"; then
         echo -e "${RED}Error: Stack is not running${NC}"
         echo "Start services first with:  ./peanut.sh start"
         exit 1

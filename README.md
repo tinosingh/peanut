@@ -1,4 +1,4 @@
-# PKG — Personal Knowledge Graph
+## PEANUT
 
 A self-hosted, containerised personal knowledge system that transforms raw personal data
 (emails, documents, PDFs, notes) into a queryable semantic knowledge graph.

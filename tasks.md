@@ -295,11 +295,11 @@ tasks:
   - id: T-030
     title: "spaCy NER: extract PERSON/ORG/GPE → Concept nodes via outbox"
     priority: P2
-    status: pending
+    status: done
     depends_on: ["T-016"]
-    branch: ""
+    branch: "feat/T-030-T-031-T-032-T-033-T-034-epic3"
     pr_url: ""
-    head_sha: ""
+    head_sha: "975873f9a82c21d1c3bccd4e5df4c3d9f4d7e210"
     acceptance_criteria:
       - "en_core_web_sm extracts entities at ingest time (deterministic, no LLM)"
       - "Each entity → (:Concept) node in FalkorDB via outbox event"
@@ -309,11 +309,11 @@ tasks:
   - id: T-031
     title: "Entity resolution spike: threshold sweep 0.80-0.99 on labeled pair set"
     priority: P2
-    status: pending
+    status: done
     depends_on: ["T-030"]
-    branch: ""
+    branch: "feat/T-030-T-031-T-032-T-033-T-034-epic3"
     pr_url: ""
-    head_sha: ""
+    head_sha: "975873f9a82c21d1c3bccd4e5df4c3d9f4d7e210"
     acceptance_criteria:
       - "Labeled set: 50 known-duplicate + 50 known-distinct person pairs in tests/"
       - "Two approaches tested: (A) Jaro-Winkler name only; (B) name + email domain + shared docs"
@@ -324,11 +324,11 @@ tasks:
   - id: T-032
     title: "TUI Entities screen: merge queue with Jaro-Winkler evidence; manual merge only"
     priority: P2
-    status: pending
+    status: done
     depends_on: ["T-031"]
-    branch: ""
+    branch: "feat/T-030-T-031-T-032-T-033-T-034-epic3"
     pr_url: ""
-    head_sha: ""
+    head_sha: "975873f9a82c21d1c3bccd4e5df4c3d9f4d7e210"
     acceptance_criteria:
       - "Entities list with merge-candidate queue"
       - "Expanded evidence row: Jaro-Winkler score, email domain match, shared document count"
@@ -339,11 +339,11 @@ tasks:
   - id: T-033
     title: "Vault sync Wikilinks from FalkorDB :MENTIONS edges"
     priority: P2
-    status: pending
+    status: done
     depends_on: ["T-018", "T-030"]
-    branch: ""
+    branch: "feat/T-030-T-031-T-032-T-033-T-034-epic3"
     pr_url: ""
-    head_sha: ""
+    head_sha: "975873f9a82c21d1c3bccd4e5df4c3d9f4d7e210"
     acceptance_criteria:
       - "Document Markdown files include [[Person/Name]] Wikilinks from :MENTIONS edges"
       - "Links update when graph edges are added/removed"
@@ -352,11 +352,11 @@ tasks:
   - id: T-034
     title: "MCP server: /mcp/ endpoint with add_document, search_facts, search_nodes tools"
     priority: P2
-    status: pending
+    status: done
     depends_on: ["T-020"]
-    branch: ""
+    branch: "feat/T-030-T-031-T-032-T-033-T-034-epic3"
     pr_url: ""
-    head_sha: ""
+    head_sha: "975873f9a82c21d1c3bccd4e5df4c3d9f4d7e210"
     acceptance_criteria:
       - "MCP Python SDK mounted at /mcp/ in tui-controller FastAPI app"
       - "Tools: add_document(text, metadata), search_facts(query), search_nodes(label, property_filter)"

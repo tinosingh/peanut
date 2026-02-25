@@ -55,4 +55,13 @@ async def watch_drop_zone(
                     log.info("file_detected", path=path, sha256=sha[:8])
                     await handle_file(path, sha)
                 except Exception as exc:
-                    log.error("file_handle_error", path=path, error=str(exc))
+                    error_type = type(exc).__name__
+                    log.error("file_handle_error", 
+                        path=path, 
+                        error=str(exc),
+                        error_type=error_type)
+                    # Soft errors (locks) are retried on next cycle
+                    # Hard errors (permission) are skipped
+                    if "Permission denied" in str(exc) or "Access denied" in str(exc):
+                        log.warning("file_permission_denied", path=path)
+                    # Else: retry on next watcher cycle

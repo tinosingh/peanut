@@ -18,6 +18,11 @@ OUTBOX_POLL_INTERVAL = 2
 OUTBOX_BATCH_SIZE = 50
 OUTBOX_MAX_ATTEMPTS = 10
 
+# Circuit breaker: stop processing if FalkorDB fails repeatedly
+_FALKORDB_ERROR_COUNT = 0
+_FALKORDB_ERROR_THRESHOLD = 5
+_CIRCUIT_BREAKER_BACKOFF = 60  # seconds
+
 
 def _apply_outbox_event(graph: Any, event_type: str, payload: dict) -> None:
     """Apply a single outbox event to FalkorDB."""

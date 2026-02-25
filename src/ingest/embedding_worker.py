@@ -109,5 +109,9 @@ async def embedding_worker(
                         """, (new_status, new_count, chunk_id))
 
         except Exception as exc:
-            log.error("embedding_worker_error", error=str(exc))
+            # Exponential backoff on repeated failures
+            log.error("embedding_worker_error", 
+                error=str(exc), 
+                error_type=type(exc).__name__,
+                backoff_secs=EMBED_POLL_INTERVAL * 5)
             await asyncio.sleep(EMBED_POLL_INTERVAL * 5)

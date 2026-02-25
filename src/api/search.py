@@ -161,9 +161,9 @@ async def _fetch_chunk_details(
 
 @router.post("/search", response_model=SearchResponse)
 async def search(req: SearchRequest) -> SearchResponse:
-    from src.shared.db import get_pool
-
     import time
+
+    from src.shared.db import get_pool
     start_time = time.time()
     cache_key = (req.q, req.limit)
     if cached := _cache_get(cache_key):

@@ -74,7 +74,7 @@ services:
       POSTGRES_URL: postgresql://${POSTGRES_USER:-pkg}:${POSTGRES_PASSWORD:?}@pkg-db:5432/${POSTGRES_DB:-pkg}
       FALKORDB_HOST: pkg-graph
       FALKORDB_PORT: "6379"
-      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
+      OLLAMA_URL: ${OLLAMA_URL:-http://host.docker.internal:11434}
       DROP_ZONE_PATH: /drop-zone
       VAULT_SYNC_PATH: /vault-sync
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
@@ -108,7 +108,7 @@ services:
       POSTGRES_URL: postgresql://${POSTGRES_USER:-pkg}:${POSTGRES_PASSWORD:?}@pkg-db:5432/${POSTGRES_DB:-pkg}
       FALKORDB_HOST: pkg-graph
       FALKORDB_PORT: "6379"
-      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
+      OLLAMA_URL: ${OLLAMA_URL:-http://host.docker.internal:11434}
       VAULT_SYNC_PATH: /vault-sync
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
     volumes:

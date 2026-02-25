@@ -12,8 +12,8 @@ from src.tui.screens.welcome import WelcomeScreen
 class PKGApp(App):
     """Personal Knowledge Graph TUI.
 
-    Screens: Dashboard, Intake, Search, Entities, Graph, Settings
-    Global bindings: ?, q, /
+    Screens: Dashboard, Intake, Search, Entities, Settings
+    Global bindings: ?, q, /, i, e, s, ctrl+d
     Footer bar auto-renders binding descriptions.
     """
 
@@ -21,10 +21,13 @@ class PKGApp(App):
     SUB_TITLE = "Personal Knowledge Graph"
 
     BINDINGS = [
-        Binding("?",     "toggle_help",    "Help"),
-        Binding("q",     "quit",           "Quit"),
-        Binding("/",     "focus_search",   "Search"),
-        Binding("ctrl+d","switch_dashboard","Dashboard"),
+        Binding("?",      "toggle_help",       "Help"),
+        Binding("q",      "quit",              "Quit"),
+        Binding("/",      "goto_search",       "Search"),
+        Binding("i",      "goto_intake",       "Intake"),
+        Binding("e",      "goto_entities",     "Entities"),
+        Binding("s",      "goto_settings",     "Settings"),
+        Binding("ctrl+d", "goto_dashboard",    "Dashboard"),
     ]
 
     CSS = """
@@ -47,19 +50,30 @@ class PKGApp(App):
             from src.shared.db import get_pool
             pool = await get_pool()
             async with pool.connection() as conn:
-                row = await conn.fetchrow("SELECT count(*) FROM documents")
+                result = await conn.execute("SELECT count(*) FROM documents")
+                row = await result.fetchone()
                 return row is not None and row[0] > 0
         except Exception:
             return False
 
     def action_toggle_help(self) -> None:
-        """Toggle the full-screen help overlay."""
         self.push_screen(HelpOverlay())
 
-    def action_focus_search(self) -> None:
-        """Switch to Search screen."""
-        self.notify("Search screen (Epic 2)")
+    def action_goto_search(self) -> None:
+        from src.tui.screens.search import SearchScreen
+        self.push_screen(SearchScreen())
 
-    def action_switch_dashboard(self) -> None:
-        """Switch to Dashboard screen."""
+    def action_goto_intake(self) -> None:
+        from src.tui.screens.intake import IntakeScreen
+        self.push_screen(IntakeScreen())
+
+    def action_goto_entities(self) -> None:
+        from src.tui.screens.entities import EntitiesScreen
+        self.push_screen(EntitiesScreen())
+
+    def action_goto_settings(self) -> None:
+        from src.tui.screens.settings import SettingsScreen
+        self.push_screen(SettingsScreen())
+
+    def action_goto_dashboard(self) -> None:
         self.switch_screen(DashboardScreen())

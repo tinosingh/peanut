@@ -493,4 +493,18 @@ tasks:
       - "SlowAPIMiddleware added so default_limits=['100/minute'] applies globally"
       - "make healthcheck, make storage-report, make upgrade targets added to Makefile"
     prd_ref: "PRD §5.3 Graph screen + Story 0.5"
+
+  - id: T-049
+    title: "Canary guard dashboard alert + entity resolution labeled dataset (50+50)"
+    priority: P2
+    status: done
+    depends_on: ["T-031", "T-032"]
+    branch: "feat/T-049-canary-dashboard-er-dataset"
+    pr_url: ""
+    head_sha: ""
+    acceptance_criteria:
+      - "DashboardScreen checks canary_pairs.json after each refresh and shows CANARY VIOLATION alert if any known-distinct pair shares merged_into"
+      - "tests/entity_resolution_labeled.json: 50 known-duplicate + 50 known-distinct pairs"
+      - "test_er_labeled_dataset.py validates dataset shape and threshold-sweep precision/recall"
+    prd_ref: "Story 3.2 + Story 3.3"
 ```

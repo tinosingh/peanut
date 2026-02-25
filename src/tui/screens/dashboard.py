@@ -82,12 +82,67 @@ class DashboardScreen(Screen):
                 f"Chunks: {total} total  |  {done} embedded  |  {pending} pending  |  {failed} failed\n"
                 f"Outbox depth: {outbox_depth}  |  Dead-letters: {dead_letters}  |  API: OK"
             )
+            error_lines = []
             if dead_letters > 0:
-                errors.update(f"[WARNING] {dead_letters} dead-lettered outbox events — check logs")
-            else:
-                errors.update("No errors")
+                error_lines.append(f"[WARNING] {dead_letters} dead-lettered outbox events — check logs")
+
+            # Canary guard: check for incorrectly merged known-distinct person pairs (Story 3.3)
+            canary_violations = await _check_canary_guard(pool)
+            if canary_violations:
+                error_lines.append(
+                    f"[CANARY VIOLATION] {len(canary_violations)} known-distinct pairs share merged_into — "
+                    "entity resolution is broken. Check threshold."
+                )
+
+            errors.update("\n".join(error_lines) if error_lines else "No errors")
         except Exception as exc:
             stats.update(f"DB unavailable: {exc}")
 
     def action_refresh_now(self) -> None:
         self.run_worker(self._refresh(), thread=False)
+
+
+async def _check_canary_guard(pool) -> list[dict]:
+    """Return canary pairs that violate the known-distinct invariant (Story 3.3).
+
+    Reads tests/canary_pairs.json. For each known-distinct pair (name_a, name_b),
+    checks if either person has a merged_into FK pointing to the other — which would
+    mean the resolution algorithm merged people it should not have.
+    """
+    import json
+    from pathlib import Path
+
+    canary_path = Path(__file__).parent.parent.parent.parent / "tests" / "canary_pairs.json"
+    if not canary_path.exists():
+        return []
+
+    try:
+        pairs = json.loads(canary_path.read_text())
+    except Exception:
+        return []
+
+    violations = []
+    try:
+        async with pool.connection() as conn:
+            for pair in pairs:
+                name_a = pair.get("name_a", "")
+                name_b = pair.get("name_b", "")
+                if not name_a or not name_b:
+                    continue
+                row = await (await conn.execute(
+                    """
+                    SELECT a.id, a.merged_into, b.id AS b_id
+                    FROM persons a
+                    JOIN persons b ON b.display_name = %s
+                    WHERE a.display_name = %s
+                      AND (a.merged_into = b.id OR b.merged_into = a.id)
+                    LIMIT 1
+                    """,
+                    (name_b, name_a),
+                )).fetchone()
+                if row:
+                    violations.append({"name_a": name_a, "name_b": name_b})
+    except Exception:
+        pass
+
+    return violations

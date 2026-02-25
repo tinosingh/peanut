@@ -12,6 +12,7 @@ Caching: TTL dict keyed on (q, limit); TTL read from config.search_cache_ttl.
 from __future__ import annotations
 
 import os
+import threading
 import time
 from typing import Any
 
@@ -28,31 +29,33 @@ log = structlog.get_logger()
 
 router = APIRouter()
 
-# ── Cache ─────────────────────────────────────────────────────────────────────
+# ── Cache (thread-safe via lock) ──────────────────────────────────────────────
+
 _cache: dict[tuple, tuple[float, Any]] = {}  # key -> (expires_at, value)
-_CACHE_MAX_SIZE = 1000  # Prevent unbounded growth
+_cache_lock = threading.Lock()
+_CACHE_MAX_SIZE = 500  # Bounded to prevent memory exhaustion
 
 
 def _cache_cleanup() -> None:
-    """Remove oldest entry if cache exceeds max size."""
-    global _cache
+    """Remove oldest entry if cache exceeds max size. Caller must hold _cache_lock."""
     if len(_cache) > _CACHE_MAX_SIZE:
-        # Remove entry with earliest expiry
         oldest_key = min(_cache.keys(), key=lambda k: _cache[k][0])
         _cache.pop(oldest_key, None)
 
 
 def _cache_get(key: tuple) -> Any | None:
-    entry = _cache.get(key)
-    if entry and entry[0] > time.monotonic():
-        return entry[1]
-    _cache.pop(key, None)
-    return None
+    with _cache_lock:
+        entry = _cache.get(key)
+        if entry and entry[0] > time.monotonic():
+            return entry[1]
+        _cache.pop(key, None)
+        return None
 
 
 def _cache_set(key: tuple, value: Any, ttl: int) -> None:
-    _cache[key] = (time.monotonic() + ttl, value)
-    _cache_cleanup()
+    with _cache_lock:
+        _cache[key] = (time.monotonic() + ttl, value)
+        _cache_cleanup()
 
 
 # ── Pydantic models ───────────────────────────────────────────────────────────

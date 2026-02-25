@@ -104,14 +104,26 @@ async def mark_public(person_id: str) -> dict:
 
 
 @router.post("/pii/bulk-redact")
-async def bulk_redact() -> dict:
-    """Replace text in all pii_detected=true chunks with [REDACTED]."""
+async def bulk_redact(batch_size: int = 1000) -> dict:
+    """Replace text in pii_detected=true chunks with [REDACTED], in batches."""
     from src.shared.db import get_pool
     pool = await get_pool()
-    async with pool.connection() as conn:
-        result = await conn.execute(
-            "UPDATE chunks SET text = '[REDACTED]' WHERE pii_detected = true"
-        )
-        count = result.rowcount if hasattr(result, "rowcount") else 0
-    log.info("bulk_redact_complete", count=count)
-    return {"redacted": count}
+    batch_size = min(max(1, batch_size), 10_000)
+    total = 0
+    while True:
+        async with pool.connection() as conn:
+            result = await conn.execute(
+                """UPDATE chunks SET text = '[REDACTED]'
+                WHERE id IN (
+                    SELECT id FROM chunks
+                    WHERE pii_detected = true AND text != '[REDACTED]'
+                    LIMIT %s
+                )""",
+                (batch_size,),
+            )
+            count = result.rowcount if hasattr(result, "rowcount") else 0
+        total += count
+        if count < batch_size:
+            break
+    log.info("bulk_redact_complete", count=total)
+    return {"redacted": total}

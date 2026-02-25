@@ -7,13 +7,13 @@ T-046: PUT /entities/{type}/{id} applies Obsidian frontmatter diffs; server time
 from __future__ import annotations
 
 import json
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Literal
 
 import structlog
 from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 
 log = structlog.get_logger()
 
@@ -39,6 +39,18 @@ class UpdateRequest(BaseModel):
 
     diffs: dict[str, str | None]
     client_updated_at: str  # ISO-8601 timestamp from Obsidian
+
+    @field_validator("diffs")
+    @classmethod
+    def diffs_bounded(cls, v: dict) -> dict:
+        if len(v) > 50:
+            raise ValueError("diffs cannot contain more than 50 fields")
+        for key, val in v.items():
+            if len(key) > 100:
+                raise ValueError("diff key exceeds 100-character limit")
+            if val is not None and len(val) > 10_000:
+                raise ValueError(f"diff value for '{key[:40]}' exceeds 10,000-character limit")
+        return v
 
 
 class UpdateResponse(BaseModel):
@@ -110,15 +122,15 @@ async def hard_delete(confirm: bool = False) -> HardDeleteResponse:
     from src.shared.db import get_pool
     pool = await get_pool()
 
-    cutoff_sql = "now() - INTERVAL '30 days'"
+    cutoff = datetime.now(UTC) - timedelta(days=30)
 
     async with pool.connection() as conn:
         # Collect IDs before deletion for outbox
         doc_rows = await (await conn.execute(
-            f"SELECT id::text FROM documents WHERE deleted_at < {cutoff_sql}"
+            "SELECT id::text FROM documents WHERE deleted_at < %s", (cutoff,)
         )).fetchall()
         person_rows = await (await conn.execute(
-            f"SELECT id::text FROM persons WHERE deleted_at < {cutoff_sql}"
+            "SELECT id::text FROM persons WHERE deleted_at < %s", (cutoff,)
         )).fetchall()
 
         doc_ids = [r[0] for r in doc_rows]
@@ -126,10 +138,10 @@ async def hard_delete(confirm: bool = False) -> HardDeleteResponse:
 
         # Hard delete — chunks cascade via FK ON DELETE CASCADE
         await conn.execute(
-            f"DELETE FROM documents WHERE deleted_at < {cutoff_sql}"
+            "DELETE FROM documents WHERE deleted_at < %s", (cutoff,)
         )
         await conn.execute(
-            f"DELETE FROM persons WHERE deleted_at < {cutoff_sql}"
+            "DELETE FROM persons WHERE deleted_at < %s", (cutoff,)
         )
 
         # Dispatch DETACH DELETE events to outbox
@@ -232,13 +244,13 @@ async def merge_entities(name_a: str, name_b: str) -> dict:
     from src.shared.db import get_pool
     pool = await get_pool()
     now = datetime.now(UTC)
-    async with pool.connection() as conn:
+    async with pool.connection() as conn, conn.transaction():
         row_a = await (await conn.execute(
-            "SELECT id::text FROM persons WHERE display_name = %s AND deleted_at IS NULL LIMIT 1",
+            "SELECT id::text FROM persons WHERE display_name = %s AND deleted_at IS NULL LIMIT 1 FOR UPDATE",
             (name_a,),
         )).fetchone()
         row_b = await (await conn.execute(
-            "SELECT id::text FROM persons WHERE display_name = %s AND deleted_at IS NULL LIMIT 1",
+            "SELECT id::text FROM persons WHERE display_name = %s AND deleted_at IS NULL LIMIT 1 FOR UPDATE",
             (name_b,),
         )).fetchone()
         if not row_a or not row_b:

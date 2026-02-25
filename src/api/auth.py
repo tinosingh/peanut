@@ -20,7 +20,7 @@ from fastapi import HTTPException, Request
 log = structlog.get_logger()
 
 # Endpoints that require write-scoped key
-_WRITE_PATHS = {"/ingest", "/entities/merge", "/entities/delete", "/config"}
+_WRITE_PATHS = {"/ingest", "/entities/merge", "/entities/delete", "/config", "/pii/bulk-redact", "/pii/mark-public"}
 
 
 def _get_keys() -> tuple[str | None, str | None]:

@@ -30,8 +30,9 @@ def _get_nlp():
         import spacy
         return spacy.load("en_core_web_sm")
     except (ImportError, OSError):
-        log.warning("spacy_model_not_found", model="en_core_web_sm",
-                    note="PII PERSON detection disabled — run: python -m spacy download en_core_web_sm")
+        log.error("spacy_model_not_found", model="en_core_web_sm",
+                  note="PII PERSON detection DISABLED — all chunks will miss PERSON entities. "
+                       "Run: python -m spacy download en_core_web_sm")
         return None
 
 

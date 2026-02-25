@@ -7,7 +7,7 @@ from collections.abc import Awaitable, Callable
 from pathlib import Path
 
 import structlog
-from watchfiles import DefaultFilter, awatch
+from watchfiles import Change, DefaultFilter, awatch
 
 log = structlog.get_logger()
 
@@ -46,12 +46,16 @@ async def watch_drop_zone(
         if Path(pause_sentinel).exists():
             log.info("watcher_paused", sentinel=pause_sentinel)
             continue
-        for _change_type, path in changes:
+        for change_type, path in changes:
             if path == pause_sentinel:
                 continue  # skip the sentinel file itself
+            if change_type not in (Change.added, Change.modified):
+                continue  # ignore deletions and renames (old-path leg)
             async with INGEST_SEMAPHORE:
                 try:
-                    sha = sha256_file(path)
+                    sha = await asyncio.get_event_loop().run_in_executor(
+                        None, sha256_file, path
+                    )
                     log.info("file_detected", path=path, sha256=sha[:8])
                     await handle_file(path, sha)
                 except Exception as exc:

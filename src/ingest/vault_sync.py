@@ -8,14 +8,33 @@ Called after successful document ingest. Does not depend on FalkorDB
 """
 from __future__ import annotations
 
+import contextlib
 import os
 import stat
+import tempfile
 from datetime import datetime
 from pathlib import Path
 
 import structlog
 
 log = structlog.get_logger()
+
+
+def _atomic_write(path: Path, content: str) -> None:
+    """Write content atomically via temp file + rename, then chmod 444."""
+    # If file exists and is read-only, remove it first
+    if path.exists():
+        os.chmod(path, stat.S_IRUSR | stat.S_IWUSR)
+    fd, tmp_path = tempfile.mkstemp(dir=str(path.parent), suffix=".tmp")
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            f.write(content)
+        os.replace(tmp_path, str(path))
+        os.chmod(path, stat.S_IRUSR | stat.S_IRGRP | stat.S_IROTH)  # 444
+    except BaseException:
+        with contextlib.suppress(OSError):
+            os.unlink(tmp_path)
+        raise
 
 
 def _safe_filename(name: str) -> str:
@@ -41,8 +60,7 @@ type: person
 
 - **Email:** {email}
 """
-    path.write_text(content, encoding="utf-8")
-    os.chmod(path, stat.S_IRUSR | stat.S_IRGRP | stat.S_IROTH)  # 444
+    _atomic_write(path, content)
     log.debug("vault_person_written", path=str(path))
     return path
 
@@ -83,8 +101,7 @@ ingested_at: "{ingested_at.isoformat()}"
 - **Sender:** [[persons/{_safe_filename(sender_email)}]]
 - **Ingested:** {ingested_at.strftime('%Y-%m-%d %H:%M')} UTC
 """
-    path.write_text(content, encoding="utf-8")
-    os.chmod(path, stat.S_IRUSR | stat.S_IRGRP | stat.S_IROTH)  # 444
+    _atomic_write(path, content)
     log.debug("vault_document_written", path=str(path))
     return path
 

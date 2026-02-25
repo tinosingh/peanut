@@ -5,26 +5,11 @@ import asyncio
 import logging
 import os
 import signal
-import uuid
 from datetime import UTC, datetime
 
 import structlog
 
 log = structlog.get_logger()
-
-
-async def _insert_chunks(pool, doc_id: str, chunks, pii_flags: list[bool]) -> None:
-    """Insert Chunk objects with embedding_status='pending'."""
-    async with pool.connection() as conn:
-        for chunk, pii in zip(chunks, pii_flags, strict=False):
-            await conn.execute(
-                """
-                INSERT INTO chunks (id, doc_id, chunk_index, text, pii_detected)
-                VALUES (%s, %s, %s, %s, %s)
-                ON CONFLICT (doc_id, chunk_index) DO NOTHING
-                """,
-                (str(uuid.uuid4()), doc_id, chunk.index, chunk.text, pii),
-            )
 
 
 async def _handle_file(path: str, sha: str) -> None:
@@ -48,8 +33,12 @@ async def _handle_file(path: str, sha: str) -> None:
         return
 
     cfg = await get_config(pool)
-    chunk_size = int(cfg.get("chunk_size", 512))
+    chunk_size = max(1, int(cfg.get("chunk_size", 512)))
     chunk_overlap = int(cfg.get("chunk_overlap", 50))
+    if chunk_overlap >= chunk_size:
+        log.warning("config_overlap_exceeds_size",
+            chunk_size=chunk_size, chunk_overlap=chunk_overlap)
+        chunk_overlap = chunk_size // 4
     vault_sync_path = os.getenv("VAULT_SYNC_PATH", "./vault-sync")
     now = datetime.now(UTC)
 
@@ -72,8 +61,9 @@ async def _handle_file(path: str, sha: str) -> None:
                     sender_name=item.sender_name or "",
                     recipients=item.recipients,
                     metadata={"subject": item.subject, "sender_email": item.sender_email},
+                    chunks=chunks,
+                    pii_flags=pii_flags,
                 )
-                await _insert_chunks(pool, doc_id, chunks, pii_flags)
                 write_document_note(
                     vault_sync_path,
                     doc_id=doc_id,
@@ -93,8 +83,8 @@ async def _handle_file(path: str, sha: str) -> None:
                 source_path=path, source_type="pdf", sha256=sha,
                 sender_email="", sender_name="", recipients=[],
                 metadata={"subject": os.path.basename(path)},
+                chunks=chunks, pii_flags=pii_flags,
             )
-            await _insert_chunks(pool, doc_id, chunks, pii_flags)
 
         elif file_type in ("markdown", "text"):
             text = parse_markdown(path)
@@ -105,8 +95,8 @@ async def _handle_file(path: str, sha: str) -> None:
                 source_path=path, source_type="markdown", sha256=sha,
                 sender_email="", sender_name="", recipients=[],
                 metadata={"subject": os.path.basename(path)},
+                chunks=chunks, pii_flags=pii_flags,
             )
-            await _insert_chunks(pool, doc_id, chunks, pii_flags)
 
         else:
             from src.ingest.db import write_dead_letter
@@ -118,8 +108,8 @@ async def _handle_file(path: str, sha: str) -> None:
         try:
             from src.ingest.db import write_dead_letter
             await write_dead_letter(pool, path, str(exc))
-        except Exception:
-            pass
+        except Exception as dead_letter_exc:
+            log.warning("dead_letter_write_failed", path=path, error=str(dead_letter_exc))
 
 
 async def main() -> None:
@@ -178,9 +168,17 @@ async def main() -> None:
             return_when=asyncio.FIRST_COMPLETED,
         )
     finally:
+        # Graceful shutdown: give workers up to 10s to finish in-flight ops
+        log.info("ingest_worker_draining", timeout_s=10)
         for t in tasks:
             t.cancel()
-        await asyncio.gather(*tasks, return_exceptions=True)
+        try:
+            await asyncio.wait_for(
+                asyncio.gather(*tasks, return_exceptions=True),
+                timeout=10,
+            )
+        except TimeoutError:
+            log.warning("ingest_worker_shutdown_timeout", note="force-killed after 10s")
         await close_pool()
         log.info("ingest_worker_stopped")
 

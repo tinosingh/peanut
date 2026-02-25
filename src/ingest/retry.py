@@ -35,7 +35,8 @@ async def retry_with_backoff(
             if attempt < MAX_RETRIES:
                 await asyncio.sleep(delay)
 
-    raise last_exc  # type: ignore[misc]
+    assert last_exc is not None  # RETRY_DELAYS is non-empty, loop always runs
+    raise last_exc
 
 
 async def retry_dead_letters(
@@ -50,9 +51,9 @@ async def retry_dead_letters(
 
     recovered = 0
     async with pool.connection() as conn:
-        rows = await conn.execute(
+        rows = await (await conn.execute(
             "SELECT id, file_path, attempts FROM dead_letter ORDER BY last_attempt"
-        ).fetchall()
+        )).fetchall()
 
     for row_id, file_path, attempts in rows:
         if attempts > MAX_RETRIES:

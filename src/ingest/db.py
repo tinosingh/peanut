@@ -40,8 +40,10 @@ async def ingest_document(
     sender_name: str,
     recipients: list[dict],
     metadata: dict[str, Any] | None = None,
+    chunks: list[Any] | None = None,
+    pii_flags: list[bool] | None = None,
 ) -> str:
-    """Insert document, UPSERT persons, INSERT outbox event — all in one transaction.
+    """Insert document, chunks, UPSERT persons, INSERT outbox event — all in one transaction.
 
     Returns the new document UUID.
     """
@@ -85,7 +87,19 @@ async def ingest_document(
                 (str(uuid.uuid4()), r["email"], r.get("name") or r["email"]),
             )
 
-        # 4. INSERT outbox event (graph write deferred to outbox worker)
+        # 4. INSERT chunks (inside same transaction for atomicity)
+        if chunks and pii_flags:
+            for chunk, pii in zip(chunks, pii_flags, strict=True):
+                await conn.execute(
+                    """
+                    INSERT INTO chunks (id, doc_id, chunk_index, text, pii_detected)
+                    VALUES (%s, %s, %s, %s, %s)
+                    ON CONFLICT (doc_id, chunk_index) DO NOTHING
+                    """,
+                    (str(uuid.uuid4()), doc_id, chunk.index, chunk.text, pii),
+                )
+
+        # 5. INSERT outbox event (graph write deferred to outbox worker)
         outbox_payload = {
             "doc_id": doc_id,
             "source_path": source_path,

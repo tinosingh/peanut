@@ -17,8 +17,9 @@ import structlog
 
 log = structlog.get_logger()
 
-EMBED_QUEUE: asyncio.Queue = asyncio.Queue(maxsize=500)
 EMBED_POLL_INTERVAL = 1   # seconds between DB polls
+_CONSECUTIVE_ERROR_THRESHOLD = 10  # circuit breaker trips after this many failures
+_CIRCUIT_BREAKER_BACKOFF = 60  # seconds to wait when circuit breaker trips
 # Tune based on available RAM and Ollama model size
 # Larger batches = more memory but faster throughput
 # 200 = ~50-100MB for nomic-embed-text
@@ -46,11 +47,12 @@ async def embedding_worker(
 ) -> None:
     """Continuously poll for pending chunks and embed them."""
     log.info("embedding_worker_started", model=model)
+    consecutive_errors = 0
     while True:
         try:
             async with pool.connection() as conn:
                 # Atomic claim with FOR UPDATE SKIP LOCKED
-                rows = await conn.execute("""
+                rows = await (await conn.execute("""
                     UPDATE chunks SET embedding_status = 'processing'
                     WHERE id IN (
                         SELECT id FROM chunks
@@ -60,7 +62,7 @@ async def embedding_worker(
                         FOR UPDATE SKIP LOCKED
                     )
                     RETURNING id, text, retry_count
-                """, (EMBED_BATCH_SIZE,)).fetchall()
+                """, (EMBED_BATCH_SIZE,))).fetchall()
 
             if not rows:
                 await asyncio.sleep(EMBED_POLL_INTERVAL)
@@ -78,14 +80,14 @@ async def embedding_worker(
                 
                 async with pool.connection() as conn:
                     db_start = time.time()
-                    for chunk_id, embedding in zip(ids, embeddings, strict=True):
-                        await conn.execute("""
-                            UPDATE chunks
-                            SET embedding = %s,
-                                embedded_at = now(),
-                                embedding_status = 'done'
-                            WHERE id = %s
-                        """, (embedding, chunk_id))
+                    # Batch UPDATE via executemany for efficiency
+                    await conn.executemany("""
+                        UPDATE chunks
+                        SET embedding = %s,
+                            embedded_at = now(),
+                            embedding_status = 'done'
+                        WHERE id = %s
+                    """, [(emb, cid) for cid, emb in zip(ids, embeddings, strict=True)])
                     db_latency_ms = (time.time() - db_start) * 1000
                 
                 log.info("embeddings_written", 
@@ -111,10 +113,20 @@ async def embedding_worker(
                             WHERE id = %s
                         """, (new_status, new_count, chunk_id))
 
+            consecutive_errors = 0  # reset on successful iteration
+
         except Exception as exc:
-            # Exponential backoff on repeated failures
-            log.error("embedding_worker_error", 
-                error=str(exc), 
-                error_type=type(exc).__name__,
-                backoff_secs=EMBED_POLL_INTERVAL * 5)
-            await asyncio.sleep(EMBED_POLL_INTERVAL * 5)
+            consecutive_errors += 1
+            if consecutive_errors >= _CONSECUTIVE_ERROR_THRESHOLD:
+                log.error("embedding_circuit_breaker_open",
+                    error=str(exc),
+                    consecutive_errors=consecutive_errors,
+                    backoff_s=_CIRCUIT_BREAKER_BACKOFF)
+                await asyncio.sleep(_CIRCUIT_BREAKER_BACKOFF)
+                consecutive_errors = 0
+            else:
+                log.error("embedding_worker_error",
+                    error=str(exc),
+                    error_type=type(exc).__name__,
+                    consecutive_errors=consecutive_errors)
+                await asyncio.sleep(EMBED_POLL_INTERVAL * 5)

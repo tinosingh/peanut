@@ -76,14 +76,14 @@ risk-policy.json
 - [ ] `pytest` passes (including harness tests)
 - [ ] `risk-policy.json` updated if new high-risk paths added
 - [ ] `PRD.md` link added if API/schema changed
-- [ ] No hardcoded secrets; no Ollama URL hardcoded — use env var `OLLAMA_BASE_URL`
+- [ ] No hardcoded secrets; no Ollama URL hardcoded — use env var `OLLAMA_URL`
 
 ### Key Environment Variables
 ```
 POSTGRES_URL        postgresql://user:pass@pkg-db:5432/pkg
 FALKORDB_HOST       pkg-graph
 FALKORDB_PORT       6379
-OLLAMA_BASE_URL     http://host.docker.internal:11434  # host Ollama
+OLLAMA_URL     http://host.docker.internal:11434  # host Ollama
 VAULT_SYNC_PATH     ./vault-sync
 DROP_ZONE_PATH      ./drop-zone
 ```

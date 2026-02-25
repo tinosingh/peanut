@@ -22,7 +22,7 @@ def test_dockerfiles_exist():
 
 def test_env_example_has_ollama_url():
     content = (ROOT / ".env.example").read_text()
-    assert "OLLAMA_BASE_URL" in content
+    assert "OLLAMA_URL" in content
     assert "host.docker.internal" in content
 
 

@@ -23,9 +23,10 @@ log = structlog.get_logger()
 async def sha256_exists(pool: AsyncConnectionPool, sha256: str) -> bool:
     """Return True if this sha256 is already in documents (dedup)."""
     async with pool.connection() as conn:
-        row = await conn.fetchrow(
+        result = await conn.execute(
             "SELECT 1 FROM documents WHERE sha256 = %s", (sha256,)
         )
+        row = await result.fetchone()
         return row is not None
 
 
@@ -70,8 +71,9 @@ async def ingest_document(
                 (sender_id, sender_email, sender_name or sender_email),
             )
             # Fetch real id (may differ from sender_id if conflict)
-            row = await conn.fetchrow("SELECT id FROM persons WHERE email = %s", (sender_email,))
-            sender_pg_id = str(row["id"])
+            result = await conn.execute("SELECT id FROM persons WHERE email = %s", (sender_email,))
+            row = await result.fetchone()
+            sender_pg_id = str(row[0]) if row else sender_id
 
             # 3. UPSERT all recipients
             for r in recipients:

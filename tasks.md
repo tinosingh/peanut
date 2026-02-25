@@ -15,9 +15,9 @@ tasks:
     priority: P0
     status: pending
     depends_on: []
-    branch: ""
+    branch: "feat/T-000-scaffold-docker-compose"
     pr_url: ""
-    head_sha: ""
+    head_sha: "32bc0eb9ac5cc0476bee5c27620adb7ea2d128b9"
     acceptance_criteria:
       - "src/ingest/, src/tui/, src/api/, db/migrations/ directories exist"
       - "docker-compose.yml defines: ingest-worker, pkg-db (pgvector), pkg-graph (falkordb), tui-controller"
@@ -28,11 +28,11 @@ tasks:
   - id: T-001
     title: "Bootstrap pkg-db: init.sql + Alembic migrations"
     priority: P0
-    status: pending
+    status: done
     depends_on: ["T-000"]
-    branch: ""
+    branch: "feat/T-001-db-init-alembic"
     pr_url: ""
-    head_sha: ""
+    head_sha: "db0ece4f2761171cd3f505d4b57365264763b346"
     acceptance_criteria:
       - "init.sql creates all 6 tables: documents, persons, chunks, outbox, dead_letter, config"
       - "Alembic configured: alembic.ini + env.py targeting pkg-db"
@@ -43,11 +43,11 @@ tasks:
   - id: T-002
     title: "Bootstrap pkg-graph: init FalkorDB empty 'pkg' graph"
     priority: P0
-    status: pending
+    status: done
     depends_on: ["T-000"]
-    branch: ""
+    branch: "feat/T-002-falkordb-init"
     pr_url: ""
-    head_sha: ""
+    head_sha: "12f29311ffad7c73f106a74efb549644e0eb1ea3"
     acceptance_criteria:
       - "Startup script creates empty 'pkg' graph on container init"
       - "redis-cli -p 6379 GRAPH.QUERY pkg 'MATCH (n) RETURN count(n)' returns 0"
@@ -56,11 +56,11 @@ tasks:
   - id: T-003
     title: "Configure bind mounts: drop-zone and vault-sync"
     priority: P0
-    status: pending
+    status: done
     depends_on: ["T-000"]
-    branch: ""
+    branch: "feat/T-003-T-004-mounts-makefile"
     pr_url: ""
-    head_sha: ""
+    head_sha: "2fc77c7d8f2f0ed243bea718e59a8f5d8b04c948"
     acceptance_criteria:
       - "./drop-zone/ mounted read-only inside ingest-worker"
       - "./vault-sync/ mounted read-write; files written with chmod 444"
@@ -70,11 +70,11 @@ tasks:
   - id: T-004
     title: "Makefile targets: up, down, reset, logs, tui, backup, migrate-up, sanity, audit"
     priority: P0
-    status: pending
+    status: done
     depends_on: ["T-000"]
-    branch: ""
+    branch: "feat/T-003-T-004-mounts-makefile"
     pr_url: ""
-    head_sha: ""
+    head_sha: "2fc77c7d8f2f0ed243bea718e59a8f5d8b04c948"
     acceptance_criteria:
       - "All targets exit 0 on a fresh clone"
       - "make sanity returns 'OK: 0 orphaned chunks'"
@@ -85,11 +85,11 @@ tasks:
   - id: T-005
     title: "TUI skeleton: help overlay + footer bar + first-run welcome screen"
     priority: P0
-    status: pending
+    status: done
     depends_on: ["T-000"]
-    branch: ""
+    branch: "feat/T-005-tui-skeleton"
     pr_url: ""
-    head_sha: ""
+    head_sha: "4a8064c7631ffc4162efac3c970b0754d2003f3f"
     acceptance_criteria:
       - "? key toggles ModalScreen help overlay on any TUI screen"
       - "Textual footer bar shows plain-English description of focused action"
@@ -101,11 +101,11 @@ tasks:
   - id: T-010
     title: "Spike: embedding latency + chunk overlap A/B on target hardware"
     priority: P0
-    status: pending
+    status: done
     depends_on: ["T-001"]
-    branch: ""
+    branch: "feat/T-010-embed-spike"
     pr_url: ""
-    head_sha: ""
+    head_sha: "29bbcfadb8742e91290b03dbcb896ab3e0868eb7"
     acceptance_criteria:
       - "p95 embed latency measured for 1k and 10k chunks via Ollama nomic-embed-text on host"
       - "Recall@5 plotted for chunk overlap 25/50/100 tokens"
@@ -116,11 +116,11 @@ tasks:
   - id: T-011
     title: "ingest-worker: watchfiles file watcher with ExtFilter"
     priority: P0
-    status: pending
+    status: done
     depends_on: ["T-000", "T-001"]
-    branch: ""
+    branch: "feat/T-011-T-012-watcher-mbox"
     pr_url: ""
-    head_sha: ""
+    head_sha: "7529d42578a8608b581a8db26d35212cd8d07ed1"
     acceptance_criteria:
       - "watchfiles 1.1.1 awatch() with ExtFilter for .mbox, .pdf, .md files"
       - "SHA-256 hash computed; file skipped if sha256 already in documents table"
@@ -130,11 +130,11 @@ tasks:
   - id: T-012
     title: "MBOX parser: extract emails into documents + persons + outbox (single transaction)"
     priority: P0
-    status: pending
+    status: done
     depends_on: ["T-011"]
-    branch: ""
+    branch: "feat/T-011-T-012-watcher-mbox"
     pr_url: ""
-    head_sha: ""
+    head_sha: "7529d42578a8608b581a8db26d35212cd8d07ed1"
     acceptance_criteria:
       - "Extracts sender_email, sender_name, recipients, subject, body_text, date"
       - "Document row + persons UPSERT + outbox INSERT all in one DB transaction"
@@ -145,11 +145,11 @@ tasks:
   - id: T-013
     title: "PDF + Markdown parsers; magika fallback for ambiguous extensions"
     priority: P0
-    status: pending
+    status: done
     depends_on: ["T-011"]
-    branch: ""
+    branch: "feat/T-013-T-014-parsers-chunker-pii"
     pr_url: ""
-    head_sha: ""
+    head_sha: "4ff9d0f205c203953b1a82631c35b30959cd8bd1"
     acceptance_criteria:
       - "pdfminer.six parses PDF; markdown parser handles .md/.markdown"
       - "magika 1.0.1 called only when extension absent/ambiguous (result.dl.ct_label)"
@@ -159,11 +159,11 @@ tasks:
   - id: T-014
     title: "Chunker + PII scanner: 512-token chunks with overlap and pii_detected flag"
     priority: P0
-    status: pending
+    status: done
     depends_on: ["T-012", "T-013", "T-010"]
-    branch: ""
+    branch: "feat/T-013-T-014-parsers-chunker-pii"
     pr_url: ""
-    head_sha: ""
+    head_sha: "4ff9d0f205c203953b1a82631c35b30959cd8bd1"
     acceptance_criteria:
       - "Chunk size and overlap read from config table (set by spike T-010)"
       - "Each chunk inserted with embedding_status='pending'"
@@ -175,11 +175,11 @@ tasks:
   - id: T-015
     title: "Embedding worker: asyncio.Task with FOR UPDATE SKIP LOCKED, retry, and failed status"
     priority: P0
-    status: pending
+    status: done
     depends_on: ["T-014"]
-    branch: ""
+    branch: "feat/T-015-T-016-workers"
     pr_url: ""
-    head_sha: ""
+    head_sha: "30d2c124a6ee7c2c501f495a0e7902992b220264"
     acceptance_criteria:
       - "Sets embedding_status='processing' atomically via FOR UPDATE SKIP LOCKED"
       - "Calls Ollama at host.docker.internal:11434 (not as Docker service)"
@@ -190,11 +190,11 @@ tasks:
   - id: T-016
     title: "Outbox worker: asyncio.Task draining FalkorDB writes with dead-letter after 10 failures"
     priority: P0
-    status: pending
+    status: done
     depends_on: ["T-002", "T-012"]
-    branch: ""
+    branch: "feat/T-015-T-016-workers"
     pr_url: ""
-    head_sha: ""
+    head_sha: "30d2c124a6ee7c2c501f495a0e7902992b220264"
     acceptance_criteria:
       - "Polls outbox WHERE processed_at IS NULL AND NOT failed"
       - "Applies document_added, entity_deleted, person_merged events to FalkorDB"
@@ -205,11 +205,11 @@ tasks:
   - id: T-017
     title: "Dead-letter retry: 3 attempts with exponential backoff (2s/8s/32s)"
     priority: P1
-    status: pending
+    status: done
     depends_on: ["T-015", "T-016"]
-    branch: ""
+    branch: "feat/T-017-T-018-T-019-retry-vault-tui"
     pr_url: ""
-    head_sha: ""
+    head_sha: "91e6738fc14b34e231d71585e52a0cc1635a9155"
     acceptance_criteria:
       - "Dead letter files retried up to 3 times with 2s/8s/32s backoff"
       - "TUI Dashboard shows error count from dead_letter table"
@@ -218,11 +218,11 @@ tasks:
   - id: T-018
     title: "Vault sync: write Markdown + YAML frontmatter to ./vault-sync/ (chmod 444)"
     priority: P1
-    status: pending
+    status: done
     depends_on: ["T-012", "T-013"]
-    branch: ""
+    branch: "feat/T-017-T-018-T-019-retry-vault-tui"
     pr_url: ""
-    head_sha: ""
+    head_sha: "91e6738fc14b34e231d71585e52a0cc1635a9155"
     acceptance_criteria:
       - "Writes ./vault-sync/persons/ and ./vault-sync/documents/ Markdown files"
       - "Files created with chmod 444 (read-only for Obsidian)"
@@ -232,11 +232,11 @@ tasks:
   - id: T-019
     title: "TUI: Dashboard + Intake screen + BM25 Search screen"
     priority: P1
-    status: pending
+    status: done
     depends_on: ["T-005", "T-015", "T-016"]
-    branch: ""
+    branch: "feat/T-017-T-018-T-019-retry-vault-tui"
     pr_url: ""
-    head_sha: ""
+    head_sha: "91e6738fc14b34e231d71585e52a0cc1635a9155"
     acceptance_criteria:
       - "Dashboard: service health, chunk counts (total/pending/done), error log, outbox depth"
       - "Intake: per-file status/progress/heartbeat; [D]rop [P]ause [R]etry [S]ystem-reset"
@@ -249,11 +249,11 @@ tasks:
   - id: T-020
     title: "FastAPI POST /search: hybrid BM25+ANN+RRF+CrossEncoder with Pydantic validation"
     priority: P1
-    status: pending
+    status: done
     depends_on: ["T-015", "T-019"]
-    branch: ""
+    branch: "feat/T-020-T-021-T-022-search"
     pr_url: ""
-    head_sha: ""
+    head_sha: "81d66bd80111dadc40fd22e60696c2633f88b628"
     acceptance_criteria:
       - "SearchRequest validates q (max_length=2000) and limit (1-100)"
       - "BM25 top 50 + ANN top 50 merged via RRF (k from config, default 60)"
@@ -265,11 +265,11 @@ tasks:
   - id: T-021
     title: "TUI Search: hybrid results with BM25/vector/reranker score columns + degraded banner"
     priority: P1
-    status: pending
+    status: done
     depends_on: ["T-020"]
-    branch: ""
+    branch: "feat/T-020-T-021-T-022-search"
     pr_url: ""
-    head_sha: ""
+    head_sha: "81d66bd80111dadc40fd22e60696c2633f88b628"
     acceptance_criteria:
       - "Results table shows BM25 score, vector score, reranker score per result"
       - "[DEGRADED — BM25 only] banner when degraded:true in response"
@@ -279,11 +279,11 @@ tasks:
   - id: T-022
     title: "make reindex: re-embed all chunks to embedding_v2 via Alembic then atomic rename"
     priority: P2
-    status: pending
+    status: done
     depends_on: ["T-001", "T-020"]
-    branch: ""
+    branch: "feat/T-020-T-021-T-022-search"
     pr_url: ""
-    head_sha: ""
+    head_sha: "81d66bd80111dadc40fd22e60696c2633f88b628"
     acceptance_criteria:
       - "Alembic migration adds embedding_v2 VECTOR(N) column"
       - "make reindex re-embeds all chunks into embedding_v2 within 5-minute window"

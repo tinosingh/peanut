@@ -3,7 +3,6 @@ from __future__ import annotations
 
 import asyncio
 import hashlib
-import logging
 from pathlib import Path
 from typing import Callable, Awaitable
 
@@ -41,9 +40,15 @@ async def watch_drop_zone(
 
     Already-seen SHA-256 hashes are checked by the caller (DB dedup).
     """
+    pause_sentinel = str(Path(drop_zone) / ".pause")
     log.info("watcher_started", drop_zone=drop_zone)
     async for changes in awatch(drop_zone, watch_filter=ExtFilter()):
+        if Path(pause_sentinel).exists():
+            log.info("watcher_paused", sentinel=pause_sentinel)
+            continue
         for _change_type, path in changes:
+            if path == pause_sentinel:
+                continue  # skip the sentinel file itself
             async with INGEST_SEMAPHORE:
                 try:
                     sha = sha256_file(path)

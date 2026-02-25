@@ -21,7 +21,7 @@ from fastapi import APIRouter
 from pydantic import BaseModel, Field
 
 from src.shared.config import get_config
-from src.shared.rrf import rrf_merge
+from src.shared.rrf import rrf_merge, weighted_merge
 from src.shared.reranker import rerank
 
 log = structlog.get_logger()
@@ -174,6 +174,9 @@ async def search(req: SearchRequest) -> SearchResponse:
     rrf_k = int(cfg.get("rrf_k", 60))
     embed_model = str(cfg.get("embed_model", "nomic-embed-text"))
     ttl = int(cfg.get("search_cache_ttl", 60))
+    bm25_weight = float(cfg.get("bm25_weight", 0.5))
+    vector_weight = float(cfg.get("vector_weight", 0.5))
+    use_weighted = abs(bm25_weight - 0.5) > 0.01 or abs(vector_weight - 0.5) > 0.01
     candidate_limit = 50
 
     degraded = False
@@ -193,7 +196,10 @@ async def search(req: SearchRequest) -> SearchResponse:
         else:
             degraded = True
 
-        merged_ids = rrf_merge(bm25_ids, ann_ids, k=rrf_k)
+        if use_weighted and ann_scores:
+            merged_ids = weighted_merge(bm25_scores, ann_scores, bm25_weight, vector_weight)
+        else:
+            merged_ids = rrf_merge(bm25_ids, ann_ids, k=rrf_k)
         top_ids = merged_ids[: req.limit * 5]  # over-fetch for reranker
 
         details = await _fetch_chunk_details(conn, top_ids)

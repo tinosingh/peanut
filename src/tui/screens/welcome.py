@@ -60,7 +60,8 @@ class WelcomeScreen(Screen):
             from src.shared.db import get_pool
             pool = await get_pool()
             async with pool.connection() as conn:
-                row = await conn.fetchrow("SELECT count(*) FROM documents")
+                result = await conn.execute("SELECT count(*) FROM documents")
+                row = await result.fetchone()
                 if row and row[0] > 0:
                     self.app.pop_screen()
         except Exception:

@@ -49,7 +49,7 @@ curl http://localhost:11434/api/tags
 
 | Variable | Default | Purpose |
 |----------|---------|---------|
-| `POSTGRES_URL` | postgresql://peanut:peanut@pkg-db:5432/pkg | Database connection |
+| `POSTGRES_URL` | postgresql://pkg:changeme@pkg-db:5432/pkg | Database connection |
 | `FALKORDB_HOST` | pkg-graph | Graph database host |
 | `FALKORDB_PORT` | 6379 | Graph database port (Redis) |
 | `OLLAMA_URL` | http://host.docker.internal:11434 | Embedding service |
@@ -90,7 +90,7 @@ pkg-tui:       FastAPI + Textual TUI
 
 ```bash
 # Database
-docker exec pkg-db psql -U peanut -d pkg -c "SELECT 1"
+docker exec pkg-db psql -U pkg -d pkg -c "SELECT 1"
 
 # Graph
 docker exec pkg-graph redis-cli PING
@@ -181,10 +181,10 @@ cp tests/fixtures/*.mbox drop-zone/
 sleep 10
 
 # Check if chunks exist
-docker exec pkg-db psql -U peanut -d pkg -c "SELECT COUNT(*) FROM chunks"
+docker exec pkg-db psql -U pkg -d pkg -c "SELECT COUNT(*) FROM chunks"
 
 # Rebuild index if needed
-docker exec pkg-db psql -U peanut -d pkg -c "REINDEX INDEX idx_chunks_tsvector"
+docker exec pkg-db psql -U pkg -d pkg -c "REINDEX INDEX idx_chunks_tsvector"
 ```
 
 ### Issue: Graph export (Vis.js) blank or errors
@@ -223,12 +223,12 @@ sleep 5
 docker exec pkg-graph redis-cli PING
 
 # Inspect failed event
-docker exec pkg-db psql -U peanut -d pkg -c "
+docker exec pkg-db psql -U pkg -d pkg -c "
   SELECT id, event_type, payload, error FROM outbox WHERE failed = true
 "
 
 # If poison pill, manually mark processed
-docker exec pkg-db psql -U peanut -d pkg -c "
+docker exec pkg-db psql -U pkg -d pkg -c "
   UPDATE outbox SET processed_at = now() WHERE id = <row_id>
 "
 ```
@@ -248,7 +248,7 @@ docker exec pkg-db psql -U peanut -d pkg -c "
 ollama show nomic-embed-text | grep parameters
 
 # Reset embedding status to retry
-docker exec pkg-db psql -U peanut -d pkg -c "
+docker exec pkg-db psql -U pkg -d pkg -c "
   UPDATE chunks SET embedding_status = 'pending', retry_count = 0
   WHERE embedding_status = 'failed'
 "
@@ -291,18 +291,18 @@ curl http://localhost:8000/metrics
 
 ```bash
 # Chunk count by status
-docker exec pkg-db psql -U peanut -d pkg -c "
+docker exec pkg-db psql -U pkg -d pkg -c "
   SELECT embedding_status, COUNT(*) FROM chunks GROUP BY embedding_status
 "
 
 # Document ingestion timeline
-docker exec pkg-db psql -U peanut -d pkg -c "
+docker exec pkg-db psql -U pkg -d pkg -c "
   SELECT DATE(ingested_at), COUNT(*) FROM documents 
   GROUP BY DATE(ingested_at) ORDER BY DATE DESC LIMIT 30
 "
 
 # PII detection rate
-docker exec pkg-db psql -U peanut -d pkg -c "
+docker exec pkg-db psql -U pkg -d pkg -c "
   SELECT pii_detected, COUNT(*) FROM chunks GROUP BY pii_detected
 "
 ```
@@ -330,7 +330,7 @@ ls -lh data/backups/
 make restore-from-backup
 
 # Or specify file
-docker exec pkg-db pg_restore --clean --if-exists -U peanut -d pkg /backups/backup-<date>.sql.gz
+docker exec pkg-db pg_restore --clean --if-exists -U pkg -d pkg /backups/backup-<date>.sql.gz
 ```
 
 ### Verify Backup
@@ -405,7 +405,7 @@ docker-compose restart pkg-ingest pkg-tui
 
 ```bash
 # Postgres
-docker exec -it pkg-db psql -U peanut -d pkg
+docker exec -it pkg-db psql -U pkg -d pkg
 
 # FalkorDB
 docker exec -it pkg-graph redis-cli

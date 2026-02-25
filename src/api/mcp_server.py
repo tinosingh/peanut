@@ -30,7 +30,7 @@ def get_mcp_app():
         from mcp.server.fastapi import MCPApp
         from mcp.types import TextContent, Tool
 
-        server = Server("pkg-knowledge-base")
+        server = Server("pkg_knowledge_base")
 
         @server.list_tools()
         async def list_tools() -> list[Tool]:

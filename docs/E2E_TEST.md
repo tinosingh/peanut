@@ -97,7 +97,7 @@ docker-compose logs pkg-ingest | grep "file_detected"
 
 ```bash
 # Check embedding progress
-docker exec pkg-db psql -U peanut -d pkg << 'SQL'
+docker exec pkg-db psql -U pkg -d pkg << 'SQL'
 SELECT 
   embedding_status,
   COUNT(*) as count
@@ -112,7 +112,7 @@ SQL
 #  (1 row)
 
 # Check embedding vector dimensions
-docker exec pkg-db psql -U peanut -d pkg << 'SQL'
+docker exec pkg-db psql -U pkg -d pkg << 'SQL'
 SELECT 
   id, 
   LENGTH(embedding::text) as vector_size,
@@ -123,7 +123,7 @@ SQL
 # Expected: vector_size > 100 (768-dimensional for nomic-embed-text)
 
 # Check PII detection
-docker exec pkg-db psql -U peanut -d pkg << 'SQL'
+docker exec pkg-db psql -U pkg -d pkg << 'SQL'
 SELECT 
   pii_detected,
   COUNT(*) as count
@@ -206,7 +206,7 @@ curl http://localhost:8000/entities/merge-candidates | jq .
 # Expected: candidates array (may be empty if only 2 unique persons)
 
 # Create duplicate person for testing
-docker exec pkg-db psql -U peanut -d pkg << 'SQL'
+docker exec pkg-db psql -U pkg -d pkg << 'SQL'
 INSERT INTO persons (id, email, display_name, pii)
 VALUES 
   ('99999999-9999-9999-9999-999999999999', 'alice.s@example.com', 'Alice S', true);
@@ -276,7 +276,7 @@ docker-compose logs --tail=50 pkg-ingest | grep -E "embeddings_written|outbox_ev
 curl -X POST "http://localhost:8000/entities/soft-delete?entity_type=document&entity_id=<UUID>"
 
 # Verify it's marked deleted_at
-docker exec pkg-db psql -U peanut -d pkg << 'SQL'
+docker exec pkg-db psql -U pkg -d pkg << 'SQL'
 SELECT id, deleted_at FROM documents WHERE deleted_at IS NOT NULL;
 SQL
 
@@ -287,7 +287,7 @@ make backup
 ls -lh data/backups/ | head -1
 
 # Test restore (dry-run)
-docker exec pkg-db pg_dump -U peanut -d pkg | gzip > /tmp/test-backup.sql.gz
+docker exec pkg-db pg_dump -U pkg -d pkg | gzip > /tmp/test-backup.sql.gz
 # File should exist
 ls -lh /tmp/test-backup.sql.gz
 ```

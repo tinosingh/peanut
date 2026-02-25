@@ -189,7 +189,7 @@ async def _fetch_subgraph(
     try:
         from falkordb import FalkorDB
 
-        host = os.getenv("FALKORDB_HOST", "localhost")
+        host = os.getenv("FALKORDB_HOST", "pkg-graph")
         port = int(os.getenv("FALKORDB_PORT", "6379"))
         db = FalkorDB(host=host, port=port)
         graph = db.select_graph("pkg")

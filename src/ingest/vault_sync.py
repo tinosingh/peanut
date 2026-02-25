@@ -61,7 +61,11 @@ def write_document_note(
     docs_dir = Path(vault_sync_path) / "documents"
     docs_dir.mkdir(parents=True, exist_ok=True)
 
-    fname = _safe_filename(subject or doc_id)[:60] + f"_{doc_id[:8]}.md"
+    # Ensure filename is useful even if subject is empty/all-special-chars
+    safe_subject = _safe_filename(subject or doc_id)
+    if not safe_subject or len(safe_subject.strip()) == 0:
+        safe_subject = f"doc-{doc_id[:12]}"
+    fname = safe_subject[:60] + f"_{doc_id[:8]}.md"
     path = docs_dir / fname
 
     content = f"""---
@@ -109,6 +113,8 @@ def update_document_wikilinks(
     if not matches:
         log.warning("vault_doc_not_found_for_wikilinks", doc_id=doc_id)
         return None
+    if len(matches) > 1:
+        log.warning("vault_doc_multiple_matches", doc_id=doc_id, count=len(matches), paths=[str(p) for p in matches])
 
     path = matches[0]
     # chmod +w temporarily

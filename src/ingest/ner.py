@@ -40,6 +40,8 @@ def extract_entities(text: str) -> list[dict]:
     if nlp is None:
         return []
     try:
+        if len(text) > 10_000:
+            log.warning("ner_text_truncated", original_length=len(text), max_length=10_000)
         doc = nlp(text[:10_000])  # cap to avoid OOM on huge chunks
         seen: set[tuple[str, str]] = set()
         entities = []

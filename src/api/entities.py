@@ -65,7 +65,11 @@ async def soft_delete(entity_type: Literal["document", "person"], entity_id: str
     from src.shared.db import get_pool
     pool = await get_pool()
 
-    table = "documents" if entity_type == "document" else "persons"
+    # Use dict lookup instead of f-string for table names (safer)
+    table_map = {"document": "documents", "person": "persons"}
+    table = table_map.get(entity_type)
+    if table is None:
+        raise HTTPException(status_code=400, detail=f"Invalid entity_type: {entity_type}")
     now = datetime.now(UTC)
 
     async with pool.connection() as conn:

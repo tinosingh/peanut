@@ -139,7 +139,12 @@ async def main() -> None:
     ollama_url = os.getenv("OLLAMA_URL", "http://host.docker.internal:11434")
     embed_model = os.getenv("EMBED_MODEL", "nomic-embed-text")
     falkordb_host = os.getenv("FALKORDB_HOST", "pkg-graph")
-    falkordb_port = int(os.getenv("FALKORDB_PORT", "6379"))
+    # Parse port with error handling
+    try:
+        falkordb_port = int(os.getenv("FALKORDB_PORT", "6379"))
+    except ValueError as e:
+        log.error("invalid_falkordb_port", error=str(e), default_port=6379)
+        falkordb_port = 6379
 
     pool = await get_pool()
     log.info("db_pool_ready")

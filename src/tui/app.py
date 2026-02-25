@@ -12,8 +12,8 @@ from src.tui.screens.welcome import WelcomeScreen
 class PKGApp(App):
     """Personal Knowledge Graph TUI.
 
-    Screens: Dashboard, Intake, Search, Entities, Settings
-    Global bindings: ?, q, /, i, e, s, ctrl+d
+    Screens: Dashboard, Intake, Search, Entities, Settings, Graph
+    Global bindings: ?, q, /, i, e, s, g, ctrl+d
     Footer bar auto-renders binding descriptions.
     """
 
@@ -27,6 +27,7 @@ class PKGApp(App):
         Binding("i",      "goto_intake",       "Intake"),
         Binding("e",      "goto_entities",     "Entities"),
         Binding("s",      "goto_settings",     "Settings"),
+        Binding("g",      "goto_graph",        "Graph"),
         Binding("ctrl+d", "goto_dashboard",    "Dashboard"),
     ]
 
@@ -74,6 +75,10 @@ class PKGApp(App):
     def action_goto_settings(self) -> None:
         from src.tui.screens.settings import SettingsScreen
         self.push_screen(SettingsScreen())
+
+    def action_goto_graph(self) -> None:
+        from src.tui.screens.graph import GraphScreen
+        self.push_screen(GraphScreen())
 
     def action_goto_dashboard(self) -> None:
         self.switch_screen(DashboardScreen())

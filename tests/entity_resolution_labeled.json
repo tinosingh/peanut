@@ -1,0 +1,807 @@
+{
+  "description": "Labeled dataset for entity resolution threshold sweep (Story 3.2). 50 known-duplicate + 50 known-distinct person pairs.",
+  "duplicates": [
+    {
+      "name_a": "Alice Smith",
+      "email_a": "alice@corp.com",
+      "name_b": "Alicia Smith",
+      "email_b": "alice@corp.com",
+      "is_duplicate": true,
+      "note": "Typo variant"
+    },
+    {
+      "name_a": "Bob Johnson",
+      "email_a": "bjohnson@firm.io",
+      "name_b": "Robert Johnson",
+      "email_b": "bjohnson@firm.io",
+      "is_duplicate": true,
+      "note": "Nickname vs full name"
+    },
+    {
+      "name_a": "Carol Williams",
+      "email_a": "cwilliams@co.uk",
+      "name_b": "Carol J. Williams",
+      "email_b": "cwilliams@co.uk",
+      "is_duplicate": true,
+      "note": "Middle initial added"
+    },
+    {
+      "name_a": "David Lee",
+      "email_a": "dlee@startup.dev",
+      "name_b": "Dave Lee",
+      "email_b": "dlee@startup.dev",
+      "is_duplicate": true,
+      "note": "David vs Dave"
+    },
+    {
+      "name_a": "Emma Brown",
+      "email_a": "emma.brown@uni.edu",
+      "name_b": "Em Brown",
+      "email_b": "emma.brown@uni.edu",
+      "is_duplicate": true,
+      "note": "Nickname"
+    },
+    {
+      "name_a": "Frank Miller",
+      "email_a": "fmiller@bank.com",
+      "name_b": "Frank A. Miller",
+      "email_b": "fmiller@bank.com",
+      "is_duplicate": true,
+      "note": "Middle initial"
+    },
+    {
+      "name_a": "Grace Chen",
+      "email_a": "gchen@lab.org",
+      "name_b": "Grace H. Chen",
+      "email_b": "gchen@lab.org",
+      "is_duplicate": true,
+      "note": "Middle initial"
+    },
+    {
+      "name_a": "Henry Davis",
+      "email_a": "hdavis@ngo.org",
+      "name_b": "Hank Davis",
+      "email_b": "hdavis@ngo.org",
+      "is_duplicate": true,
+      "note": "Hank vs Henry"
+    },
+    {
+      "name_a": "Isabel Martin",
+      "email_a": "imartin@press.com",
+      "name_b": "Isabella Martin",
+      "email_b": "imartin@press.com",
+      "is_duplicate": true,
+      "note": "Short vs full name"
+    },
+    {
+      "name_a": "James Wilson",
+      "email_a": "jwilson@govt.gov",
+      "name_b": "Jim Wilson",
+      "email_b": "jwilson@govt.gov",
+      "is_duplicate": true,
+      "note": "Jim vs James"
+    },
+    {
+      "name_a": "Katherine Moore",
+      "email_a": "kmoore@clinic.net",
+      "name_b": "Kate Moore",
+      "email_b": "kmoore@clinic.net",
+      "is_duplicate": true,
+      "note": "Kate vs Katherine"
+    },
+    {
+      "name_a": "Liam Taylor",
+      "email_a": "ltaylor@arch.com",
+      "name_b": "L. Taylor",
+      "email_b": "ltaylor@arch.com",
+      "is_duplicate": true,
+      "note": "First name initial"
+    },
+    {
+      "name_a": "Maria Garcia",
+      "email_a": "mgarcia@hosp.org",
+      "name_b": "Mary Garcia",
+      "email_b": "mgarcia@hosp.org",
+      "is_duplicate": true,
+      "note": "Maria vs Mary"
+    },
+    {
+      "name_a": "Nathan Brown",
+      "email_a": "nbrown@school.edu",
+      "name_b": "Nathaniel Brown",
+      "email_b": "nbrown@school.edu",
+      "is_duplicate": true,
+      "note": "Nate vs Nathaniel"
+    },
+    {
+      "name_a": "Olivia White",
+      "email_a": "owhite@design.io",
+      "name_b": "Olive White",
+      "email_b": "owhite@design.io",
+      "is_duplicate": true,
+      "note": "Olivia vs Olive"
+    },
+    {
+      "name_a": "Patrick Harris",
+      "email_a": "pharris@law.com",
+      "name_b": "Pat Harris",
+      "email_b": "pharris@law.com",
+      "is_duplicate": true,
+      "note": "Patrick vs Pat"
+    },
+    {
+      "name_a": "Quinn Davis",
+      "email_a": "qdavis@media.co",
+      "name_b": "Quincy Davis",
+      "email_b": "qdavis@media.co",
+      "is_duplicate": true,
+      "note": "Quinn vs Quincy"
+    },
+    {
+      "name_a": "Rachel Evans",
+      "email_a": "revans@bio.uk",
+      "name_b": "Rach Evans",
+      "email_b": "revans@bio.uk",
+      "is_duplicate": true,
+      "note": "Shortened first name"
+    },
+    {
+      "name_a": "Samuel Thompson",
+      "email_a": "sthompson@re.com",
+      "name_b": "Sam Thompson",
+      "email_b": "sthompson@re.com",
+      "is_duplicate": true,
+      "note": "Sam vs Samuel"
+    },
+    {
+      "name_a": "Tara Robinson",
+      "email_a": "trobinson@ins.com",
+      "name_b": "Tara M. Robinson",
+      "email_b": "trobinson@ins.com",
+      "is_duplicate": true,
+      "note": "Middle initial"
+    },
+    {
+      "name_a": "Uma Patel",
+      "email_a": "upatel@tech.in",
+      "name_b": "Uma S. Patel",
+      "email_b": "upatel@tech.in",
+      "is_duplicate": true,
+      "note": "Middle initial"
+    },
+    {
+      "name_a": "Victor Martinez",
+      "email_a": "vmartinez@it.mx",
+      "name_b": "Vic Martinez",
+      "email_b": "vmartinez@it.mx",
+      "is_duplicate": true,
+      "note": "Victor vs Vic"
+    },
+    {
+      "name_a": "Wendy Anderson",
+      "email_a": "wanderson@pub.com",
+      "name_b": "Wend Anderson",
+      "email_b": "wanderson@pub.com",
+      "is_duplicate": true,
+      "note": "Shortened"
+    },
+    {
+      "name_a": "Xander Jackson",
+      "email_a": "xjackson@vc.com",
+      "name_b": "Alexander Jackson",
+      "email_b": "xjackson@vc.com",
+      "is_duplicate": true,
+      "note": "Xander vs Alexander"
+    },
+    {
+      "name_a": "Yara White",
+      "email_a": "ywhite@studio.art",
+      "name_b": "Yara M. White",
+      "email_b": "ywhite@studio.art",
+      "is_duplicate": true,
+      "note": "Middle initial"
+    },
+    {
+      "name_a": "Zoe Clark",
+      "email_a": "zclark@ngo.net",
+      "name_b": "Zoey Clark",
+      "email_b": "zclark@ngo.net",
+      "is_duplicate": true,
+      "note": "Zoe vs Zoey"
+    },
+    {
+      "name_a": "Alan Wright",
+      "email_a": "awright@eng.com",
+      "name_b": "Allan Wright",
+      "email_b": "awright@eng.com",
+      "is_duplicate": true,
+      "note": "Alan vs Allan"
+    },
+    {
+      "name_a": "Beth Turner",
+      "email_a": "bturner@hr.com",
+      "name_b": "Elizabeth Turner",
+      "email_b": "bturner@hr.com",
+      "is_duplicate": true,
+      "note": "Beth vs Elizabeth"
+    },
+    {
+      "name_a": "Chris Hall",
+      "email_a": "chall@ops.io",
+      "name_b": "Christopher Hall",
+      "email_b": "chall@ops.io",
+      "is_duplicate": true,
+      "note": "Chris vs Christopher"
+    },
+    {
+      "name_a": "Diana Lewis",
+      "email_a": "dlewis@sales.com",
+      "name_b": "Di Lewis",
+      "email_b": "dlewis@sales.com",
+      "is_duplicate": true,
+      "note": "Di vs Diana"
+    },
+    {
+      "name_a": "Edward Young",
+      "email_a": "eyoung@data.com",
+      "name_b": "Ed Young",
+      "email_b": "eyoung@data.com",
+      "is_duplicate": true,
+      "note": "Ed vs Edward"
+    },
+    {
+      "name_a": "Fiona King",
+      "email_a": "fking@brand.co",
+      "name_b": "Fi King",
+      "email_b": "fking@brand.co",
+      "is_duplicate": true,
+      "note": "Shortened"
+    },
+    {
+      "name_a": "George Scott",
+      "email_a": "gscott@trade.com",
+      "name_b": "G. Scott",
+      "email_b": "gscott@trade.com",
+      "is_duplicate": true,
+      "note": "First name initial"
+    },
+    {
+      "name_a": "Hannah Green",
+      "email_a": "hgreen@csm.org",
+      "name_b": "Han Green",
+      "email_b": "hgreen@csm.org",
+      "is_duplicate": true,
+      "note": "Shortened"
+    },
+    {
+      "name_a": "Ian Baker",
+      "email_a": "ibaker@print.com",
+      "name_b": "Ian J. Baker",
+      "email_b": "ibaker@print.com",
+      "is_duplicate": true,
+      "note": "Middle initial"
+    },
+    {
+      "name_a": "Julia Adams",
+      "email_a": "jadams@law.org",
+      "name_b": "Julie Adams",
+      "email_b": "jadams@law.org",
+      "is_duplicate": true,
+      "note": "Julia vs Julie"
+    },
+    {
+      "name_a": "Kevin Nelson",
+      "email_a": "knelson@fin.com",
+      "name_b": "Kev Nelson",
+      "email_b": "knelson@fin.com",
+      "is_duplicate": true,
+      "note": "Shortened"
+    },
+    {
+      "name_a": "Laura Carter",
+      "email_a": "lcarter@mkt.io",
+      "name_b": "Laurie Carter",
+      "email_b": "lcarter@mkt.io",
+      "is_duplicate": true,
+      "note": "Laura vs Laurie"
+    },
+    {
+      "name_a": "Mike Mitchell",
+      "email_a": "mmitchell@dev.co",
+      "name_b": "Michael Mitchell",
+      "email_b": "mmitchell@dev.co",
+      "is_duplicate": true,
+      "note": "Mike vs Michael"
+    },
+    {
+      "name_a": "Nancy Perez",
+      "email_a": "nperez@hr.mx",
+      "name_b": "Nan Perez",
+      "email_b": "nperez@hr.mx",
+      "is_duplicate": true,
+      "note": "Shortened"
+    },
+    {
+      "name_a": "Oscar Roberts",
+      "email_a": "oroberts@ship.uk",
+      "name_b": "Oz Roberts",
+      "email_b": "oroberts@ship.uk",
+      "is_duplicate": true,
+      "note": "Nickname"
+    },
+    {
+      "name_a": "Pamela Turner",
+      "email_a": "pturner@cons.com",
+      "name_b": "Pam Turner",
+      "email_b": "pturner@cons.com",
+      "is_duplicate": true,
+      "note": "Pam vs Pamela"
+    },
+    {
+      "name_a": "Richard Phillips",
+      "email_a": "rphillips@re.com",
+      "name_b": "Rich Phillips",
+      "email_b": "rphillips@re.com",
+      "is_duplicate": true,
+      "note": "Rich vs Richard"
+    },
+    {
+      "name_a": "Susan Campbell",
+      "email_a": "scampbell@edu.org",
+      "name_b": "Sue Campbell",
+      "email_b": "scampbell@edu.org",
+      "is_duplicate": true,
+      "note": "Sue vs Susan"
+    },
+    {
+      "name_a": "Timothy Parker",
+      "email_a": "tparker@infra.com",
+      "name_b": "Tim Parker",
+      "email_b": "tparker@infra.com",
+      "is_duplicate": true,
+      "note": "Tim vs Timothy"
+    },
+    {
+      "name_a": "Ursula Evans",
+      "email_a": "uevans@bio.eu",
+      "name_b": "Urse Evans",
+      "email_b": "uevans@bio.eu",
+      "is_duplicate": true,
+      "note": "Shortened"
+    },
+    {
+      "name_a": "Vincent Edwards",
+      "email_a": "vedwards@art.com",
+      "name_b": "Vince Edwards",
+      "email_b": "vedwards@art.com",
+      "is_duplicate": true,
+      "note": "Vince vs Vincent"
+    },
+    {
+      "name_a": "Wilma Collins",
+      "email_a": "wcollins@plan.org",
+      "name_b": "Wil Collins",
+      "email_b": "wcollins@plan.org",
+      "is_duplicate": true,
+      "note": "Shortened"
+    },
+    {
+      "name_a": "Xena Stewart",
+      "email_a": "xstewart@gym.com",
+      "name_b": "Xena R. Stewart",
+      "email_b": "xstewart@gym.com",
+      "is_duplicate": true,
+      "note": "Middle initial"
+    },
+    {
+      "name_a": "Yasmine Morris",
+      "email_a": "ymorris@spa.net",
+      "name_b": "Yas Morris",
+      "email_b": "ymorris@spa.net",
+      "is_duplicate": true,
+      "note": "Shortened"
+    }
+  ],
+  "distinct": [
+    {
+      "name_a": "Alice Smith",
+      "email_a": "alice@corp.com",
+      "name_b": "Alice Jones",
+      "email_b": "alice.jones@other.com",
+      "is_duplicate": false,
+      "note": "Same first name, different last"
+    },
+    {
+      "name_a": "Bob Johnson",
+      "email_a": "bjohnson@firm.io",
+      "name_b": "Rob Johnson",
+      "email_b": "rjohnson@other.io",
+      "is_duplicate": false,
+      "note": "Different first, same last"
+    },
+    {
+      "name_a": "Carol Williams",
+      "email_a": "cwilliams@co.uk",
+      "name_b": "Karen Williams",
+      "email_b": "kwilliams@diff.uk",
+      "is_duplicate": false,
+      "note": "Different persons"
+    },
+    {
+      "name_a": "David Lee",
+      "email_a": "dlee@startup.dev",
+      "name_b": "David Chan",
+      "email_b": "dchan@startup.dev",
+      "is_duplicate": false,
+      "note": "Same first, different last"
+    },
+    {
+      "name_a": "Emma Brown",
+      "email_a": "emma.brown@uni.edu",
+      "name_b": "Emily Brown",
+      "email_b": "emily.brown@other.edu",
+      "is_duplicate": false,
+      "note": "Similar names, different domains"
+    },
+    {
+      "name_a": "Frank Miller",
+      "email_a": "fmiller@bank.com",
+      "name_b": "Frank Moore",
+      "email_b": "fmoore@bank.com",
+      "is_duplicate": false,
+      "note": "Same first, different last"
+    },
+    {
+      "name_a": "Grace Chen",
+      "email_a": "gchen@lab.org",
+      "name_b": "Grace Kim",
+      "email_b": "gkim@diff.org",
+      "is_duplicate": false,
+      "note": "Different last names"
+    },
+    {
+      "name_a": "Henry Davis",
+      "email_a": "hdavis@ngo.org",
+      "name_b": "Harvey Davis",
+      "email_b": "harvey@other.org",
+      "is_duplicate": false,
+      "note": "Henry vs Harvey"
+    },
+    {
+      "name_a": "Isabel Martin",
+      "email_a": "imartin@press.com",
+      "name_b": "Isabelle Morton",
+      "email_b": "imorton@press.com",
+      "is_duplicate": false,
+      "note": "Similar first, different last"
+    },
+    {
+      "name_a": "James Wilson",
+      "email_a": "jwilson@govt.gov",
+      "name_b": "James Walsh",
+      "email_b": "jwalsh@govt.gov",
+      "is_duplicate": false,
+      "note": "Same first, different last"
+    },
+    {
+      "name_a": "Katherine Moore",
+      "email_a": "kmoore@clinic.net",
+      "name_b": "Kathleen Morgan",
+      "email_b": "kmorgan@other.net",
+      "is_duplicate": false,
+      "note": "Katherine vs Kathleen"
+    },
+    {
+      "name_a": "Liam Taylor",
+      "email_a": "ltaylor@arch.com",
+      "name_b": "Liam Thomas",
+      "email_b": "lthomas@arch.com",
+      "is_duplicate": false,
+      "note": "Same first, different last"
+    },
+    {
+      "name_a": "Maria Garcia",
+      "email_a": "mgarcia@hosp.org",
+      "name_b": "Maria Gomez",
+      "email_b": "mgomez@hosp.org",
+      "is_duplicate": false,
+      "note": "Same first, different last"
+    },
+    {
+      "name_a": "Nathan Brown",
+      "email_a": "nbrown@school.edu",
+      "name_b": "Nathan Brooks",
+      "email_b": "nbrooks@other.edu",
+      "is_duplicate": false,
+      "note": "Brown vs Brooks"
+    },
+    {
+      "name_a": "Olivia White",
+      "email_a": "owhite@design.io",
+      "name_b": "Olivia Walsh",
+      "email_b": "owalsh@design.io",
+      "is_duplicate": false,
+      "note": "Same first, different last"
+    },
+    {
+      "name_a": "Patrick Harris",
+      "email_a": "pharris@law.com",
+      "name_b": "Paul Harris",
+      "email_b": "paul.harris@other.com",
+      "is_duplicate": false,
+      "note": "Patrick vs Paul"
+    },
+    {
+      "name_a": "Quinn Davis",
+      "email_a": "qdavis@media.co",
+      "name_b": "Quinn Dixon",
+      "email_b": "qdixon@media.co",
+      "is_duplicate": false,
+      "note": "Same first, different last"
+    },
+    {
+      "name_a": "Rachel Evans",
+      "email_a": "revans@bio.uk",
+      "name_b": "Rebecca Evans",
+      "email_b": "rebecca@other.uk",
+      "is_duplicate": false,
+      "note": "Rachel vs Rebecca"
+    },
+    {
+      "name_a": "Samuel Thompson",
+      "email_a": "sthompson@re.com",
+      "name_b": "Steven Thompson",
+      "email_b": "sthompson2@re.com",
+      "is_duplicate": false,
+      "note": "Samuel vs Steven"
+    },
+    {
+      "name_a": "Tara Robinson",
+      "email_a": "trobinson@ins.com",
+      "name_b": "Teresa Robinson",
+      "email_b": "tresrobinson@other.com",
+      "is_duplicate": false,
+      "note": "Tara vs Teresa"
+    },
+    {
+      "name_a": "Uma Patel",
+      "email_a": "upatel@tech.in",
+      "name_b": "Usha Patel",
+      "email_b": "ushapatel@other.in",
+      "is_duplicate": false,
+      "note": "Uma vs Usha"
+    },
+    {
+      "name_a": "Victor Martinez",
+      "email_a": "vmartinez@it.mx",
+      "name_b": "Vicente Martinez",
+      "email_b": "vmartinez2@it.mx",
+      "is_duplicate": false,
+      "note": "Victor vs Vicente"
+    },
+    {
+      "name_a": "Wendy Anderson",
+      "email_a": "wanderson@pub.com",
+      "name_b": "Wanda Anderson",
+      "email_b": "wanda@other.com",
+      "is_duplicate": false,
+      "note": "Wendy vs Wanda"
+    },
+    {
+      "name_a": "Xander Jackson",
+      "email_a": "xjackson@vc.com",
+      "name_b": "Xavier Jackson",
+      "email_b": "xjackson2@vc.com",
+      "is_duplicate": false,
+      "note": "Xander vs Xavier"
+    },
+    {
+      "name_a": "Yara White",
+      "email_a": "ywhite@studio.art",
+      "name_b": "Yasmin White",
+      "email_b": "yasmin@other.art",
+      "is_duplicate": false,
+      "note": "Yara vs Yasmin"
+    },
+    {
+      "name_a": "Zoe Clark",
+      "email_a": "zclark@ngo.net",
+      "name_b": "Zara Clark",
+      "email_b": "zara@other.net",
+      "is_duplicate": false,
+      "note": "Zoe vs Zara"
+    },
+    {
+      "name_a": "Alan Wright",
+      "email_a": "awright@eng.com",
+      "name_b": "Alex Wright",
+      "email_b": "awright2@eng.com",
+      "is_duplicate": false,
+      "note": "Alan vs Alex"
+    },
+    {
+      "name_a": "Beth Turner",
+      "email_a": "bturner@hr.com",
+      "name_b": "Beatrice Turner",
+      "email_b": "bturner2@hr.com",
+      "is_duplicate": false,
+      "note": "Beth vs Beatrice"
+    },
+    {
+      "name_a": "Chris Hall",
+      "email_a": "chall@ops.io",
+      "name_b": "Craig Hall",
+      "email_b": "craig@other.io",
+      "is_duplicate": false,
+      "note": "Chris vs Craig"
+    },
+    {
+      "name_a": "Diana Lewis",
+      "email_a": "dlewis@sales.com",
+      "name_b": "Diane Lewis",
+      "email_b": "dlewis2@sales.com",
+      "is_duplicate": false,
+      "note": "Diana vs Diane (different people)"
+    },
+    {
+      "name_a": "Edward Young",
+      "email_a": "eyoung@data.com",
+      "name_b": "Edwin Young",
+      "email_b": "eyoung2@data.com",
+      "is_duplicate": false,
+      "note": "Edward vs Edwin"
+    },
+    {
+      "name_a": "Fiona King",
+      "email_a": "fking@brand.co",
+      "name_b": "Frances King",
+      "email_b": "fking2@brand.co",
+      "is_duplicate": false,
+      "note": "Fiona vs Frances"
+    },
+    {
+      "name_a": "George Scott",
+      "email_a": "gscott@trade.com",
+      "name_b": "Gerard Scott",
+      "email_b": "gscott2@trade.com",
+      "is_duplicate": false,
+      "note": "George vs Gerard"
+    },
+    {
+      "name_a": "Hannah Green",
+      "email_a": "hgreen@csm.org",
+      "name_b": "Harriet Green",
+      "email_b": "hgreen2@csm.org",
+      "is_duplicate": false,
+      "note": "Hannah vs Harriet"
+    },
+    {
+      "name_a": "Ian Baker",
+      "email_a": "ibaker@print.com",
+      "name_b": "Ivan Baker",
+      "email_b": "ibaker2@print.com",
+      "is_duplicate": false,
+      "note": "Ian vs Ivan"
+    },
+    {
+      "name_a": "Julia Adams",
+      "email_a": "jadams@law.org",
+      "name_b": "June Adams",
+      "email_b": "june@other.org",
+      "is_duplicate": false,
+      "note": "Julia vs June"
+    },
+    {
+      "name_a": "Kevin Nelson",
+      "email_a": "knelson@fin.com",
+      "name_b": "Kent Nelson",
+      "email_b": "kent@other.com",
+      "is_duplicate": false,
+      "note": "Kevin vs Kent"
+    },
+    {
+      "name_a": "Laura Carter",
+      "email_a": "lcarter@mkt.io",
+      "name_b": "Leona Carter",
+      "email_b": "leona@other.io",
+      "is_duplicate": false,
+      "note": "Laura vs Leona"
+    },
+    {
+      "name_a": "Mike Mitchell",
+      "email_a": "mmitchell@dev.co",
+      "name_b": "Milton Mitchell",
+      "email_b": "mmitchell2@dev.co",
+      "is_duplicate": false,
+      "note": "Mike vs Milton"
+    },
+    {
+      "name_a": "Nancy Perez",
+      "email_a": "nperez@hr.mx",
+      "name_b": "Nina Perez",
+      "email_b": "nperez2@hr.mx",
+      "is_duplicate": false,
+      "note": "Nancy vs Nina"
+    },
+    {
+      "name_a": "Oscar Roberts",
+      "email_a": "oroberts@ship.uk",
+      "name_b": "Owen Roberts",
+      "email_b": "owen@other.uk",
+      "is_duplicate": false,
+      "note": "Oscar vs Owen"
+    },
+    {
+      "name_a": "Pamela Turner",
+      "email_a": "pturner@cons.com",
+      "name_b": "Penelope Turner",
+      "email_b": "pturner2@cons.com",
+      "is_duplicate": false,
+      "note": "Pamela vs Penelope"
+    },
+    {
+      "name_a": "Richard Phillips",
+      "email_a": "rphillips@re.com",
+      "name_b": "Roger Phillips",
+      "email_b": "rphillips2@re.com",
+      "is_duplicate": false,
+      "note": "Richard vs Roger"
+    },
+    {
+      "name_a": "Susan Campbell",
+      "email_a": "scampbell@edu.org",
+      "name_b": "Sylvia Campbell",
+      "email_b": "scampbell2@edu.org",
+      "is_duplicate": false,
+      "note": "Susan vs Sylvia"
+    },
+    {
+      "name_a": "Timothy Parker",
+      "email_a": "tparker@infra.com",
+      "name_b": "Trevor Parker",
+      "email_b": "tparker2@infra.com",
+      "is_duplicate": false,
+      "note": "Timothy vs Trevor"
+    },
+    {
+      "name_a": "Ursula Evans",
+      "email_a": "uevans@bio.eu",
+      "name_b": "Ulrika Evans",
+      "email_b": "uevans2@bio.eu",
+      "is_duplicate": false,
+      "note": "Ursula vs Ulrika"
+    },
+    {
+      "name_a": "Vincent Edwards",
+      "email_a": "vedwards@art.com",
+      "name_b": "Virgil Edwards",
+      "email_b": "vedwards2@art.com",
+      "is_duplicate": false,
+      "note": "Vincent vs Virgil"
+    },
+    {
+      "name_a": "Wilma Collins",
+      "email_a": "wcollins@plan.org",
+      "name_b": "Winifred Collins",
+      "email_b": "wcollins2@plan.org",
+      "is_duplicate": false,
+      "note": "Wilma vs Winifred"
+    },
+    {
+      "name_a": "Xena Stewart",
+      "email_a": "xstewart@gym.com",
+      "name_b": "Ximena Stewart",
+      "email_b": "xstewart2@gym.com",
+      "is_duplicate": false,
+      "note": "Xena vs Ximena"
+    },
+    {
+      "name_a": "Yasmine Morris",
+      "email_a": "ymorris@spa.net",
+      "name_b": "Yolanda Morris",
+      "email_b": "ymorris2@spa.net",
+      "is_duplicate": false,
+      "note": "Yasmine vs Yolanda"
+    }
+  ]
+}

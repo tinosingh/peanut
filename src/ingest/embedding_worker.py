@@ -68,8 +68,13 @@ async def embedding_worker(
             retry_counts = {str(r[0]): r[2] for r in rows}
 
             try:
+                import time
+                start_time = time.time()
                 embeddings = await call_ollama_embed(ollama_url, model, texts)
+                ollama_latency_ms = (time.time() - start_time) * 1000
+                
                 async with pool.connection() as conn:
+                    db_start = time.time()
                     for chunk_id, embedding in zip(ids, embeddings, strict=True):
                         await conn.execute("""
                             UPDATE chunks
@@ -78,10 +83,21 @@ async def embedding_worker(
                                 embedding_status = 'done'
                             WHERE id = %s
                         """, (embedding, chunk_id))
-                log.info("embeddings_written", count=len(ids))
+                    db_latency_ms = (time.time() - db_start) * 1000
+                
+                log.info("embeddings_written", 
+                    count=len(ids), 
+                    ollama_latency_ms=ollama_latency_ms,
+                    db_write_latency_ms=db_latency_ms,
+                    avg_latency_per_chunk_ms=ollama_latency_ms/len(ids))
 
             except Exception as exc:
-                log.error("embedding_batch_failed", error=str(exc), batch_size=len(ids))
+                failed_count = sum(1 for chunk_id in ids if retry_counts[chunk_id] >= retry_max - 1)
+                log.error("embedding_batch_failed", 
+                    error=str(exc), 
+                    batch_size=len(ids),
+                    will_fail=failed_count,
+                    error_type=type(exc).__name__)
                 async with pool.connection() as conn:
                     for chunk_id in ids:
                         new_count = retry_counts[chunk_id] + 1

@@ -116,16 +116,30 @@ async def outbox_worker(
                     continue
 
                 try:
+                    import time
+                    start = time.time()
                     _apply_outbox_event(graph, event_type, payload)
+                    latency_ms = (time.time() - start) * 1000
+                    
                     async with pool.connection() as conn:
                         await conn.execute("""
                             UPDATE outbox
                             SET processed_at = now(), attempts = attempts + 1
                             WHERE id = %s
                         """, (row_id,))
+                    
+                    log.info("outbox_event_processed",
+                        row_id=row_id,
+                        event_type=event_type,
+                        latency_ms=latency_ms,
+                        payload_size=len(str(payload)))
 
                 except Exception as exc:
-                    log.error("outbox_event_failed", row_id=row_id, error=str(exc))
+                    log.error("outbox_event_failed", 
+                        row_id=row_id, 
+                        event_type=event_type,
+                        error=str(exc),
+                        error_type=type(exc).__name__)
                     async with pool.connection() as conn:
                         await conn.execute("""
                             UPDATE outbox SET error = %s, attempts = attempts + 1

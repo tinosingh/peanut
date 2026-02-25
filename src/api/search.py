@@ -163,10 +163,14 @@ async def _fetch_chunk_details(
 async def search(req: SearchRequest) -> SearchResponse:
     from src.shared.db import get_pool
 
+    import time
+    start_time = time.time()
     cache_key = (req.q, req.limit)
     if cached := _cache_get(cache_key):
+        log.info("search_cache_hit", query=req.q[:100])
         return cached
 
+    log.info("search_started", query=req.q[:100], limit=req.limit)
     pool = await get_pool()
     cfg = await get_config(pool)
 
@@ -236,4 +240,15 @@ async def search(req: SearchRequest) -> SearchResponse:
 
     response = SearchResponse(results=results, degraded=degraded, query=req.q)
     _cache_set(cache_key, response, ttl)
+    
+    elapsed_ms = (time.time() - start_time) * 1000
+    log.info("search_completed",
+        result_count=len(results),
+        elapsed_ms=elapsed_ms,
+        degraded=degraded,
+        bm25_matches=len(bm25_ids),
+        ann_matches=len(ann_ids),
+        merged_count=len(merged_ids),
+        reranked=len(rerank_scores_list) if rerank_scores_list else 0)
+    
     return response

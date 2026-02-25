@@ -50,7 +50,7 @@ class WelcomeScreen(Screen):
         yield Footer()
 
     def on_mount(self) -> None:
-        """Poll every 5s — dismiss once a document exists."""
+        """Poll every 5s — switch to Intake once a document exists."""
         self.set_interval(5.0, self._check_for_documents)
 
     async def _check_for_documents(self) -> None:
@@ -62,6 +62,7 @@ class WelcomeScreen(Screen):
                 result = await conn.execute("SELECT count(*) FROM documents")
                 row = await result.fetchone()
                 if row and row[0] > 0:
-                    self.app.pop_screen()
+                    from src.tui.screens.intake import IntakeScreen
+                    self.app.switch_screen(IntakeScreen())
         except Exception:
             pass  # DB not ready yet — keep waiting

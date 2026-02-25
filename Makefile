@@ -1,6 +1,7 @@
 .PHONY: up down reset logs tui test lint typecheck \
         migrate-up backup restore-from-backup test-backup-restore \
-        sanity audit hard-delete scan-pii reindex rotate-keys help
+        sanity audit hard-delete scan-pii reindex rotate-keys \
+        healthcheck storage-report upgrade help
 
 COMPOSE        := docker compose
 BACKUP_DIR     := ./data/backups
@@ -29,6 +30,9 @@ help:
 	@echo "  hard-delete          Hard delete quarantined rows (requires --confirm)"
 	@echo "  scan-pii             Run PII scanner over un-scanned chunks"
 	@echo "  reindex              Re-embed all chunks to embedding_v2"
+	@echo "  healthcheck          Poll all service health endpoints; exit 1 on failure"
+	@echo "  storage-report       Show per-table row counts + pgvector index sizes"
+	@echo "  upgrade              Pull latest images, run make test, restart services"
 
 up:
 	@cp -n .env.example .env 2>/dev/null || true
@@ -143,3 +147,35 @@ rotate-keys:
 	  echo "API_KEY_READ  (read-only)  = $$NEW_READ"; \
 	  echo "API_KEY_WRITE (read-write) = $$NEW_WRITE"; \
 	  echo "Keys written to .env — restart containers to apply"
+
+healthcheck:
+	@echo "Checking service health endpoints..."
+	@API_URL=$$(grep -s "^API_BASE_URL=" .env | cut -d= -f2- || echo "http://localhost:8000"); \
+	  STATUS=$$(curl -sf "$$API_URL/health" 2>/dev/null | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('status','unknown'))" 2>/dev/null || echo "unreachable"); \
+	  echo "  tui-controller: $$STATUS"; \
+	  if [ "$$STATUS" != "ok" ]; then echo "FAIL: tui-controller not healthy"; exit 1; fi
+	@$(COMPOSE) exec -T pkg-db pg_isready -U $(DB_USER) -d $(DB_NAME) && echo "  pkg-db:          ok" || (echo "FAIL: pkg-db not ready"; exit 1)
+	@$(COMPOSE) exec -T pkg-graph redis-cli ping | grep -q PONG && echo "  pkg-graph:       ok" || (echo "FAIL: pkg-graph not ready"; exit 1)
+	@echo "All services healthy."
+
+storage-report:
+	@echo "=== PKG Storage Report ==="
+	@$(COMPOSE) exec -T pkg-db psql -U $(DB_USER) -d $(DB_NAME) -c \
+	  "SELECT relname AS table, n_live_tup AS rows, pg_size_pretty(pg_total_relation_size(quote_ident(relname))) AS total_size \
+	   FROM pg_stat_user_tables \
+	   ORDER BY n_live_tup DESC;"
+	@echo ""
+	@$(COMPOSE) exec -T pkg-db psql -U $(DB_USER) -d $(DB_NAME) -c \
+	  "SELECT indexname, pg_size_pretty(pg_relation_size(indexname::regclass)) AS index_size \
+	   FROM pg_indexes \
+	   WHERE indexname LIKE '%embedding%' OR indexname LIKE '%hnsw%' OR indexname LIKE '%ivfflat%' \
+	   ORDER BY pg_relation_size(indexname::regclass) DESC;" 2>/dev/null || echo "(no vector indexes found)"
+
+upgrade:
+	@echo "Pulling latest service images..."
+	$(COMPOSE) pull
+	@echo "Running test suite..."
+	$(MAKE) test
+	@echo "Restarting services with updated images..."
+	$(COMPOSE) up -d --force-recreate
+	@echo "Upgrade complete. Run 'make migrate-up' if schema changes are included."

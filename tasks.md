@@ -475,4 +475,22 @@ tasks:
       - "RateLimitExceeded returns HTTP 429"
       - "Graceful degradation: if slowapi not installed, app starts normally without rate limiting"
     prd_ref: "PRD §3.5"
+
+  - id: T-048
+    title: "Graph TUI screen: Textual Tree + Vis.js export + SlowAPIMiddleware fix"
+    priority: P2
+    status: done
+    depends_on: ["T-030"]
+    branch: "feat/T-048-graph-screen-and-fixes"
+    pr_url: ""
+    head_sha: ""
+    acceptance_criteria:
+      - "GraphScreen with Textual Tree widget renders (:Person)-[edge]->(:Node) subgraph"
+      - "Enter drills into selected node; Backspace returns to previous root"
+      - "X exports current subgraph as self-contained graph.html (Vis.js) and opens in browser"
+      - "g binding in PKGApp routes to GraphScreen"
+      - "Graceful degradation: empty tree if FalkorDB unavailable"
+      - "SlowAPIMiddleware added so default_limits=['100/minute'] applies globally"
+      - "make healthcheck, make storage-report, make upgrade targets added to Makefile"
+    prd_ref: "PRD §5.3 Graph screen + Story 0.5"
 ```

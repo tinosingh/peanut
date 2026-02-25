@@ -1,8 +1,9 @@
 """Tests for T-046 (PUT /entities bidirectional sync) and T-047 (slowapi rate limiting)."""
 from __future__ import annotations
 
-import pytest
 from pathlib import Path
+
+import pytest
 
 ROOT = Path(__file__).parent.parent
 
@@ -86,8 +87,9 @@ def test_update_request_pydantic_model():
 )
 def test_update_response_pydantic_model():
     """Validate UpdateResponse Pydantic model with conflict_detected=True."""
-    from pydantic import BaseModel
     from typing import Literal
+
+    from pydantic import BaseModel
 
     class UpdateResponse(BaseModel):
         id: str

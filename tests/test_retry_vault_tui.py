@@ -1,13 +1,12 @@
 """Tests for T-017 (retry), T-018 (vault sync), T-019 (TUI screens)."""
-import ast
 import os
 import stat
 import tempfile
+from datetime import UTC, datetime
 from pathlib import Path
 
-from src.ingest.retry import RETRY_DELAYS, MAX_RETRIES
-from src.ingest.vault_sync import write_person_note, write_document_note
-from datetime import datetime, timezone
+from src.ingest.retry import MAX_RETRIES, RETRY_DELAYS
+from src.ingest.vault_sync import write_document_note, write_person_note
 
 ROOT = Path(__file__).parent.parent
 
@@ -19,7 +18,7 @@ def test_retry_delays_are_2_8_32():
 
 
 def test_max_retries_matches_delays():
-    assert MAX_RETRIES == len(RETRY_DELAYS)
+    assert len(RETRY_DELAYS) == MAX_RETRIES
     assert MAX_RETRIES == 3
 
 
@@ -61,7 +60,7 @@ def test_write_document_note_creates_file():
             source_type="mbox",
             sender_email="alice@example.com",
             subject="Q3 Budget Review",
-            ingested_at=datetime(2024, 9, 12, tzinfo=timezone.utc),
+            ingested_at=datetime(2024, 9, 12, tzinfo=UTC),
         )
         assert path.exists()
         content = path.read_text()
@@ -78,7 +77,7 @@ def test_write_document_note_chmod_444():
             source_type="pdf",
             sender_email="test@example.com",
             subject="Test",
-            ingested_at=datetime.now(timezone.utc),
+            ingested_at=datetime.now(UTC),
         )
         mode = stat.S_IMODE(os.stat(path).st_mode)
         assert not (mode & stat.S_IWUSR)  # read-only
@@ -94,7 +93,7 @@ def test_vault_sync_documents_subdirectory():
     with tempfile.TemporaryDirectory() as tmpdir:
         write_document_note(
             tmpdir, doc_id="d1", source_path="/x", source_type="pdf",
-            sender_email="a@b.com", subject="S", ingested_at=datetime.now(timezone.utc)
+            sender_email="a@b.com", subject="S", ingested_at=datetime.now(UTC)
         )
         assert (Path(tmpdir) / "documents").is_dir()
 

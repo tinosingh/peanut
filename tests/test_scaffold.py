@@ -1,5 +1,4 @@
 """Smoke tests: verify project scaffold integrity for T-000."""
-import os
 from pathlib import Path
 
 ROOT = Path(__file__).parent.parent
@@ -34,7 +33,7 @@ def test_src_layout():
 def test_pyproject_has_extras():
     content = (ROOT / "pyproject.toml").read_text()
     for extra in ["ingest", "tui", "test"]:
-        assert f'[project.optional-dependencies]\n' in content or extra in content
+        assert '[project.optional-dependencies]\n' in content or extra in content
 
 
 def test_test_compose_exists():

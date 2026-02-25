@@ -1,14 +1,11 @@
 """Tests for T-015 (embedding worker) + T-016 (outbox worker) — unit tests."""
-import asyncio
-import json
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
 from src.ingest.embedding_worker import EMBED_QUEUE, call_ollama_embed
-from src.ingest.outbox_worker import _apply_outbox_event, OUTBOX_MAX_ATTEMPTS
-
+from src.ingest.outbox_worker import OUTBOX_MAX_ATTEMPTS, _apply_outbox_event
 
 # ── T-015: Embedding worker ────────────────────────────────────────────────
 

@@ -82,8 +82,14 @@ def score_pair_b(
 ) -> float:
     """Approach B: name (0.6) + email domain (0.3) + shared docs (0.1)."""
     name_score = jaro_winkler(name1, name2)
-    domain1 = email1.split("@")[-1].lower() if "@" in email1 else ""
-    domain2 = email2.split("@")[-1].lower() if "@" in email2 else ""
+    # Extract domain safely: get everything after the last @ symbol
+    def _get_domain(email: str) -> str:
+        if "@" not in email:
+            return ""
+        parts = email.rsplit("@", 1)
+        return parts[-1].lower() if len(parts) > 1 else ""
+    domain1 = _get_domain(email1)
+    domain2 = _get_domain(email2)
     domain_score = 1.0 if domain1 and domain1 == domain2 else 0.0
     doc_score = min(shared_docs / 5.0, 1.0)  # saturates at 5 shared docs
     return 0.6 * name_score + 0.3 * domain_score + 0.1 * doc_score

@@ -1,13 +1,11 @@
 """Tests for T-013 (parsers + detector) and T-014 (chunker + PII scanner)."""
 import os
 import tempfile
-from pathlib import Path
 
+from src.ingest.chunker import Chunk, chunk_text
 from src.ingest.parsers.detector import detect_type
 from src.ingest.parsers.markdown_parser import parse_markdown
-from src.ingest.chunker import chunk_text, Chunk
 from src.ingest.pii import has_pii, scan_text
-
 
 # ── T-013: Detector ────────────────────────────────────────────────────────
 

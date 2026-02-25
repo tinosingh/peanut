@@ -62,13 +62,24 @@ def _apply_outbox_event(graph: Any, event_type: str, payload: dict) -> None:
             )
 
     elif event_type == "entity_deleted":
-        graph.query("MATCH (n {id: $id}) DETACH DELETE n", {"id": payload["id"]})
+        # Handle both old and new field names for backwards compatibility
+        entity_id = payload.get("entity_id") or payload.get("id")
+        if entity_id:
+            graph.query("MATCH (n {id: $id}) DETACH DELETE n", {"id": entity_id})
+        else:
+            log.warning("entity_deleted_missing_id", payload=payload)
 
     elif event_type == "person_merged":
-        graph.query(
-            "MATCH (a:Person {id: $from_id})-[r]->() SET r.invalid_at = $ts",
-            {"from_id": payload["from_id"], "ts": payload.get("ts", "")},
-        )
+        # Handle both old and new field names for backwards compatibility
+        from_id = payload.get("merged_from") or payload.get("from_id")
+        if from_id:
+            ts = payload.get("merged_at") or payload.get("ts", "")
+            graph.query(
+                "MATCH (a:Person {id: $from_id})-[r]->() SET r.invalid_at = $ts",
+                {"from_id": from_id, "ts": ts},
+            )
+        else:
+            log.warning("person_merged_missing_from_id", payload=payload)
 
 
 async def outbox_worker(

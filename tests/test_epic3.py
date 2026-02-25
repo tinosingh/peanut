@@ -7,7 +7,7 @@ import json
 import os
 import stat
 import tempfile
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
@@ -159,7 +159,7 @@ def test_vault_sync_has_update_wikilinks():
 
 
 def test_update_document_wikilinks_creates_mentions_section():
-    from src.ingest.vault_sync import write_document_note, update_document_wikilinks
+    from src.ingest.vault_sync import update_document_wikilinks, write_document_note
     with tempfile.TemporaryDirectory() as tmpdir:
         write_document_note(
             tmpdir,
@@ -168,7 +168,7 @@ def test_update_document_wikilinks_creates_mentions_section():
             source_type="pdf",
             sender_email="a@b.com",
             subject="Test",
-            ingested_at=datetime.now(timezone.utc),
+            ingested_at=datetime.now(UTC),
         )
         result = update_document_wikilinks(
             tmpdir,
@@ -182,7 +182,7 @@ def test_update_document_wikilinks_creates_mentions_section():
 
 
 def test_update_document_wikilinks_chmod_444():
-    from src.ingest.vault_sync import write_document_note, update_document_wikilinks
+    from src.ingest.vault_sync import update_document_wikilinks, write_document_note
     with tempfile.TemporaryDirectory() as tmpdir:
         write_document_note(
             tmpdir,
@@ -191,7 +191,7 @@ def test_update_document_wikilinks_chmod_444():
             source_type="pdf",
             sender_email="a@b.com",
             subject="Perm Test",
-            ingested_at=datetime.now(timezone.utc),
+            ingested_at=datetime.now(UTC),
         )
         result = update_document_wikilinks(
             tmpdir,

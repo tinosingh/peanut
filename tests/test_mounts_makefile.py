@@ -1,6 +1,6 @@
 """Tests for T-003 (bind mounts) and T-004 (Makefile targets)."""
-from pathlib import Path
 import re
+from pathlib import Path
 
 ROOT = Path(__file__).parent.parent
 COMPOSE = (ROOT / "docker-compose.yml").read_text()

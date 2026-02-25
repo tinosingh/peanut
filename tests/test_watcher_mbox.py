@@ -5,15 +5,14 @@ import os
 import tempfile
 from pathlib import Path
 
-from src.ingest.watcher import ExtFilter, sha256_file, WATCHED_EXTENSIONS
-from src.ingest.parsers.mbox import parse_mbox, ParsedMessage
-
+from src.ingest.parsers.mbox import ParsedMessage, parse_mbox
+from src.ingest.watcher import WATCHED_EXTENSIONS, ExtFilter, sha256_file
 
 # ── T-011: Watcher ─────────────────────────────────────────────────────────
 
 def test_ext_filter_accepts_known_extensions():
     f = ExtFilter()
-    for ext in WATCHED_EXTENSIONS:
+    for _ext in WATCHED_EXTENSIONS:
         assert f.__class__.__bases__[0]  # DefaultFilter imported
     assert ".mbox" in WATCHED_EXTENSIONS
     assert ".pdf" in WATCHED_EXTENSIONS

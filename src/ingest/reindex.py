@@ -85,7 +85,7 @@ async def reindex(confirm_rename: bool = False) -> None:
             continue
 
         async with pool.connection() as conn:
-            for chunk_id, emb in zip(ids, embeddings, strict=False):
+            for chunk_id, emb in zip(ids, embeddings, strict=True):
                 await conn.execute(
                     "UPDATE chunks SET embedding_v2 = %s::vector WHERE id = %s::uuid",
                     (emb, chunk_id),

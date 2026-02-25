@@ -1,8 +1,9 @@
 """Intake view — drop-zone file queue with per-file ingest progress."""
+
 from __future__ import annotations
 
 import os
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 
 from textual.app import ComposeResult
 from textual.binding import Binding
@@ -54,7 +55,10 @@ class IntakeView(Widget):
 
     def compose(self) -> ComposeResult:
         drop_zone = os.getenv("DROP_ZONE_PATH", "/drop-zone")
-        yield Static(f"[#8e8e93]watching[/#8e8e93]  [bold #f2f2f7]{drop_zone}[/bold #f2f2f7]", id="intake-header")
+        yield Static(
+            f"[#8e8e93]watching[/#8e8e93]  [bold #f2f2f7]{drop_zone}[/bold #f2f2f7]",
+            id="intake-header",
+        )
         yield DataTable(id="file-table", zebra_stripes=True)
         yield Static("", id="intake-status")
 
@@ -76,21 +80,24 @@ class IntakeView(Widget):
     async def _load(self) -> None:
         try:
             from src.shared.db import get_pool
+
             pool = await get_pool()
             async with pool.connection() as conn:
-                rows = await (await conn.execute(
-                    "SELECT d.source_path, d.source_type, d.ingested_at, "
-                    "COUNT(c.id) AS total, "
-                    "SUM(CASE WHEN c.embedding_status = 'done' THEN 1 ELSE 0 END) AS done, "
-                    "SUM(CASE WHEN c.embedding_status = 'failed' THEN 1 ELSE 0 END) AS failed "
-                    "FROM documents d LEFT JOIN chunks c ON c.doc_id = d.id "
-                    "WHERE d.deleted_at IS NULL GROUP BY d.id, d.source_path, d.source_type, d.ingested_at "
-                    "ORDER BY d.ingested_at DESC LIMIT 100"
-                )).fetchall()
+                rows = await (
+                    await conn.execute(
+                        "SELECT d.source_path, d.source_type, d.ingested_at, "
+                        "COUNT(c.id) AS total, "
+                        "SUM(CASE WHEN c.embedding_status = 'done' THEN 1 ELSE 0 END) AS done, "
+                        "SUM(CASE WHEN c.embedding_status = 'failed' THEN 1 ELSE 0 END) AS failed "
+                        "FROM documents d LEFT JOIN chunks c ON c.doc_id = d.id "
+                        "WHERE d.deleted_at IS NULL GROUP BY d.id, d.source_path, d.source_type, d.ingested_at "
+                        "ORDER BY d.ingested_at DESC LIMIT 100"
+                    )
+                ).fetchall()
 
             tbl = self.query_one(DataTable)
             tbl.clear()
-            now = datetime.now(UTC)
+            now = datetime.now(timezone.utc)
 
             for source_path, source_type, ingested_at, total, done, failed in rows:
                 fname = (source_path or "?").split("/")[-1]
@@ -111,7 +118,7 @@ class IntakeView(Widget):
 
                 if ingested_at:
                     tz = ingested_at.tzinfo
-                    ts = ingested_at if tz else ingested_at.replace(tzinfo=UTC)
+                    ts = ingested_at if tz else ingested_at.replace(tzinfo=timezone.utc)
                     elapsed = int((now - ts).total_seconds())
                     if elapsed < 60:
                         age = f"{elapsed}s"
@@ -158,6 +165,7 @@ class IntakeView(Widget):
     async def _retry(self) -> None:
         try:
             from src.shared.db import get_pool
+
             pool = await get_pool()
             async with pool.connection() as conn:
                 await conn.execute(

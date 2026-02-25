@@ -1,4 +1,5 @@
 """PKG — Personal Knowledge Graph TUI. Apple-inspired redesign."""
+
 from __future__ import annotations
 
 import logging
@@ -160,11 +161,13 @@ class PKGApp(App):
         has_docs = await self._has_documents()
         if not has_docs:
             from src.tui.screens.welcome import WelcomeScreen
+
             await self.push_screen(WelcomeScreen())
 
     async def _has_documents(self) -> bool:
         try:
             from src.shared.db import get_pool
+
             pool = await get_pool()
             async with pool.connection() as conn:
                 result = await conn.execute("SELECT count(*) FROM documents")
@@ -175,11 +178,11 @@ class PKGApp(App):
 
     def compose(self) -> ComposeResult:
         from src.tui.screens.dashboard import DashboardView
+        from src.tui.screens.entities import EntitiesView
+        from src.tui.screens.graph import GraphView
         from src.tui.screens.intake import IntakeView
         from src.tui.screens.search import SearchView
-        from src.tui.screens.entities import EntitiesView
         from src.tui.screens.settings import SettingsView
-        from src.tui.screens.graph import GraphView
 
         yield Header(show_clock=True)
         with TabbedContent(initial="dashboard"):
@@ -198,12 +201,15 @@ class PKGApp(App):
 
     def action_show_help(self) -> None:
         from src.tui.screens.help import HelpOverlay
+
         self.push_screen(HelpOverlay())
 
     def action_activate_tab(self, tab_id: str) -> None:
         self.query_one(TabbedContent).active = tab_id
 
-    def on_tabbed_content_tab_activated(self, event: TabbedContent.TabActivated) -> None:
+    def on_tabbed_content_tab_activated(
+        self, event: TabbedContent.TabActivated
+    ) -> None:
         """Notify the active view so it can (re)load its data."""
         tab_id = event.tab.id
         view_id = f"v-{tab_id}"

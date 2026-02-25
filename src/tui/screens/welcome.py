@@ -1,4 +1,5 @@
 """First-run welcome screen."""
+
 from __future__ import annotations
 
 from textual.app import ComposeResult
@@ -85,6 +86,7 @@ class WelcomeScreen(Screen):
     async def _poll(self) -> None:
         try:
             from src.shared.db import get_pool
+
             pool = await get_pool()
             async with pool.connection() as conn:
                 result = await conn.execute("SELECT count(*) FROM documents")

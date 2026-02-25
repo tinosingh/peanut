@@ -1,4 +1,5 @@
 """Help overlay — all key bindings."""
+
 from __future__ import annotations
 
 from textual.app import ComposeResult
@@ -66,25 +67,43 @@ class HelpOverlay(ModalScreen):
             yield Static("PKG — Key Bindings", id="help-title")
 
             yield Static("GLOBAL", classes="help-section")
-            yield Static("[#0a84ff]1–6[/#0a84ff]  switch tabs  ·  [#0a84ff]ctrl+h[/#0a84ff]  help  ·  [#0a84ff]q[/#0a84ff]  quit", classes="help-row")
+            yield Static(
+                "[#0a84ff]1–6[/#0a84ff]  switch tabs  ·  [#0a84ff]ctrl+h[/#0a84ff]  help  ·  [#0a84ff]q[/#0a84ff]  quit",
+                classes="help-row",
+            )
 
             yield Static("DASHBOARD", classes="help-section")
             yield Static("[#0a84ff]r[/#0a84ff]  refresh", classes="help-row")
 
             yield Static("INTAKE", classes="help-section")
-            yield Static("[#0a84ff]p[/#0a84ff]  pause  ·  [#0a84ff]r[/#0a84ff]  retry", classes="help-row")
+            yield Static(
+                "[#0a84ff]p[/#0a84ff]  pause  ·  [#0a84ff]r[/#0a84ff]  retry",
+                classes="help-row",
+            )
 
             yield Static("SEARCH", classes="help-section")
-            yield Static("[#0a84ff]↵[/#0a84ff]  search  ·  [#0a84ff]enter[/#0a84ff]  expand", classes="help-row")
+            yield Static(
+                "[#0a84ff]↵[/#0a84ff]  search  ·  [#0a84ff]enter[/#0a84ff]  expand",
+                classes="help-row",
+            )
 
             yield Static("ENTITIES", classes="help-section")
-            yield Static("[#0a84ff]m[/#0a84ff]  merge (2×)  ·  [#0a84ff]r[/#0a84ff]  reload", classes="help-row")
+            yield Static(
+                "[#0a84ff]m[/#0a84ff]  merge (2×)  ·  [#0a84ff]r[/#0a84ff]  reload",
+                classes="help-row",
+            )
 
             yield Static("SETTINGS", classes="help-section")
-            yield Static("[#0a84ff]s[/#0a84ff]  save  ·  [#0a84ff]p[/#0a84ff]  PII  ·  [#0a84ff]R[/#0a84ff]  redact", classes="help-row")
+            yield Static(
+                "[#0a84ff]s[/#0a84ff]  save  ·  [#0a84ff]p[/#0a84ff]  PII  ·  [#0a84ff]R[/#0a84ff]  redact",
+                classes="help-row",
+            )
 
             yield Static("GRAPH", classes="help-section")
-            yield Static("[#0a84ff]enter[/#0a84ff]  drill  ·  [#0a84ff]backspace[/#0a84ff]  back  ·  [#0a84ff]r[/#0a84ff]  reload", classes="help-row")
+            yield Static(
+                "[#0a84ff]enter[/#0a84ff]  drill  ·  [#0a84ff]backspace[/#0a84ff]  back  ·  [#0a84ff]r[/#0a84ff]  reload",
+                classes="help-row",
+            )
 
             yield Button("Close  [esc]", id="close-btn")
 

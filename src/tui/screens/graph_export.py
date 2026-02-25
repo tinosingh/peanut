@@ -3,6 +3,7 @@
 The HTML embeds the Vis.js network layout via CDN (no local assets needed).
 Nodes are coloured by label: Person=blue, Document=green, Concept=orange.
 """
+
 from __future__ import annotations
 
 import json
@@ -64,22 +65,26 @@ def render_visjs(
     for n in nodes:
         group = n.get("group", "")
         color = _LABEL_COLORS.get(group, _DEFAULT_COLOR)
-        vis_nodes.append({
-            "id": n["id"],
-            "label": n.get("label", n["id"]),
-            "title": n.get("title", ""),
-            "color": color,
-            "group": group,
-        })
+        vis_nodes.append(
+            {
+                "id": n["id"],
+                "label": n.get("label", n["id"]),
+                "title": n.get("title", ""),
+                "color": color,
+                "group": group,
+            }
+        )
 
     vis_edges = []
     for i, e in enumerate(edges):
-        vis_edges.append({
-            "id": i,
-            "from": e["from"],
-            "to": e["to"],
-            "label": e.get("label", ""),
-        })
+        vis_edges.append(
+            {
+                "id": i,
+                "from": e["from"],
+                "to": e["to"],
+                "label": e.get("label", ""),
+            }
+        )
 
     return _VIS_HTML_TEMPLATE.format(
         nodes_json=json.dumps(vis_nodes),

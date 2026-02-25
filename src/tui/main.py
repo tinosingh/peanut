@@ -1,4 +1,5 @@
 """TUI controller entry point — FastAPI + Textual."""
+
 import os
 import signal
 import sys
@@ -35,6 +36,7 @@ except ImportError:
 # ── CORS (localhost only, since this is a personal app) ──────────────────────
 try:
     from fastapi.middleware.cors import CORSMiddleware
+
     app.add_middleware(
         CORSMiddleware,
         allow_origins=["localhost", "127.0.0.1", "http://localhost:*"],
@@ -60,6 +62,7 @@ async def enforce_api_key(request, call_next):
         from fastapi.responses import JSONResponse
 
         from src.api.auth import check_api_key
+
         try:
             check_api_key(request)
         except Exception as exc:
@@ -74,7 +77,9 @@ async def add_security_headers(request, call_next):
     """Add security headers to all responses."""
     response = await call_next(request)
     # CSP: only allow same-origin resources
-    response.headers["Content-Security-Policy"] = "default-src 'self'; script-src 'unsafe-inline' unpkg.com; style-src 'unsafe-inline'"
+    response.headers["Content-Security-Policy"] = (
+        "default-src 'self'; script-src 'unsafe-inline' unpkg.com; style-src 'unsafe-inline'"
+    )
     # Prevent MIME type sniffing
     response.headers["X-Content-Type-Options"] = "nosniff"
     # Prevent clickjacking
@@ -112,7 +117,10 @@ async def health() -> dict:
     falkordb_port = int(os.getenv("FALKORDB_PORT", "6379"))
     try:
         import redis.asyncio as redis
-        r = redis.Redis(host=falkordb_host, port=falkordb_port, socket_connect_timeout=2)
+
+        r = redis.Redis(
+            host=falkordb_host, port=falkordb_port, socket_connect_timeout=2
+        )
         await r.ping()
         await r.close()
         checks["falkordb"] = "ok"
@@ -120,16 +128,18 @@ async def health() -> dict:
         # Fallback if redis-py not installed - use raw socket
         try:
             import asyncio
+
             reader, writer = await asyncio.wait_for(
-                asyncio.open_connection(falkordb_host, falkordb_port),
-                timeout=2.0
+                asyncio.open_connection(falkordb_host, falkordb_port), timeout=2.0
             )
             writer.write(b"*1\r\n$4\r\nPING\r\n")
             await writer.drain()
             response = await asyncio.wait_for(reader.read(100), timeout=1.0)
             writer.close()
             await writer.wait_closed()
-            checks["falkordb"] = "ok" if b"PONG" in response else "error: unexpected response"
+            checks["falkordb"] = (
+                "ok" if b"PONG" in response else "error: unexpected response"
+            )
         except Exception as exc:
             checks["falkordb"] = f"error: {type(exc).__name__}"
     except Exception as exc:
@@ -151,9 +161,10 @@ async def health() -> dict:
 
     status_code = 200 if critical_ok else 503
     from fastapi.responses import JSONResponse
+
     return JSONResponse(
         content={"status": "healthy" if all_ok else "degraded", **checks},
-        status_code=status_code
+        status_code=status_code,
     )
 
 
@@ -161,6 +172,7 @@ async def health() -> dict:
 async def _mount_mcp() -> None:
     """Lazily mount MCP server at /mcp/ if SDK is available (T-034)."""
     from src.api.mcp_server import get_mcp_app
+
     mcp = get_mcp_app()
     if mcp is not None:
         app.mount("/mcp", mcp)
@@ -170,6 +182,7 @@ async def _mount_mcp() -> None:
 async def _shutdown_pool() -> None:
     """Close the shared DB connection pool on graceful shutdown."""
     from src.shared.db import close_pool
+
     await close_pool()
 
 

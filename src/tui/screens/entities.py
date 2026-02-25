@@ -1,4 +1,5 @@
 """Entities view — manual entity resolution / merge queue."""
+
 from __future__ import annotations
 
 import os
@@ -61,7 +62,9 @@ class EntitiesView(Widget):
 
     def on_mount(self) -> None:
         tbl = self.query_one(DataTable)
-        tbl.add_columns("PERSON A", "PERSON B", "JW SCORE", "SAME DOMAIN", "SHARED DOCS")
+        tbl.add_columns(
+            "PERSON A", "PERSON B", "JW SCORE", "SAME DOMAIN", "SHARED DOCS"
+        )
         self.run_worker(self._load(), exclusive=True)
 
     async def on_activated(self) -> None:
@@ -81,7 +84,9 @@ class EntitiesView(Widget):
                 headers["X-API-Key"] = key
 
             async with httpx.AsyncClient(timeout=30) as client:
-                resp = await client.get(f"{base}/entities/merge-candidates", headers=headers)
+                resp = await client.get(
+                    f"{base}/entities/merge-candidates", headers=headers
+                )
                 resp.raise_for_status()
                 data = resp.json()
 
@@ -91,7 +96,11 @@ class EntitiesView(Widget):
 
             for c in self._candidates:
                 jw = f"{c.get('jw_score', 0):.3f}"
-                dom = "[#30d158]yes[/#30d158]" if c.get("same_domain") else "[#636366]no[/#636366]"
+                dom = (
+                    "[#30d158]yes[/#30d158]"
+                    if c.get("same_domain")
+                    else "[#636366]no[/#636366]"
+                )
                 docs = str(c.get("shared_docs", 0))
                 tbl.add_row(c.get("name_a", "?"), c.get("name_b", "?"), jw, dom, docs)
 
@@ -99,7 +108,9 @@ class EntitiesView(Widget):
                 f"[#636366]{len(self._candidates)} candidates  ·  m=merge  r=reload[/#636366]"
             )
         except Exception as exc:
-            self.query_one("#entities-status", Static).update(f"[#ff453a]{exc}[/#ff453a]")
+            self.query_one("#entities-status", Static).update(
+                f"[#ff453a]{exc}[/#ff453a]"
+            )
 
     def action_merge(self) -> None:
         tbl = self.query_one(DataTable)
@@ -136,7 +147,9 @@ class EntitiesView(Widget):
                 )
                 resp.raise_for_status()
 
-            self.notify(f"Merged {c.get('name_a')} → {c.get('name_b')}", severity="information")
+            self.notify(
+                f"Merged {c.get('name_a')} → {c.get('name_b')}", severity="information"
+            )
             await self._load()
         except Exception as exc:
             self.notify(f"Merge failed: {exc}", severity="error")

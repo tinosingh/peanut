@@ -1,4 +1,5 @@
 """Search view — hybrid BM25 + vector + CrossEncoder."""
+
 from __future__ import annotations
 
 import os
@@ -109,7 +110,9 @@ class SearchView(Widget):
                 vec = f"{r.get('vector_score', 0):.3f}"
                 rerank = f"{r.get('rerank_score', 0):.3f}"
                 self._last_snippets[str(i)] = r.get("snippet", "")
-                tbl.add_row(str(i), fname, sender, snippet, bm25, vec, rerank, key=str(i))
+                tbl.add_row(
+                    str(i), fname, sender, snippet, bm25, vec, rerank, key=str(i)
+                )
 
             suffix = "  [#ff9f0a]· degraded (BM25 only)[/#ff9f0a]" if degraded else ""
             self.query_one("#search-status", Static).update(

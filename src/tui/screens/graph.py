@@ -1,7 +1,9 @@
 """Graph view — FalkorDB knowledge graph navigation."""
+
 from __future__ import annotations
 
 import os
+from typing import Any
 
 from textual.app import ComposeResult
 from textual.binding import Binding
@@ -90,6 +92,7 @@ class GraphView(Widget):
     async def _load(self, root_email: str | None) -> None:
         try:
             import falkordb
+
             host = os.getenv("FALKORDB_HOST", "pkg-graph")
             port = int(os.getenv("FALKORDB_PORT", "6379"))
             client = falkordb.FalkorDB(host=host, port=port)
@@ -100,7 +103,7 @@ class GraphView(Widget):
                     "MATCH (p:Person {email: $email})-[r]->(n) "
                     "RETURN p.email, labels(p)[0], coalesce(p.name, p.email, p.id), "
                     "type(r), n.id, labels(n)[0], coalesce(n.name, n.title, n.email, n.id) LIMIT 50",
-                    {"email": root_email}
+                    {"email": root_email},
                 )
             else:
                 result = g.query(
@@ -117,7 +120,7 @@ class GraphView(Widget):
             root_node.set_label(f"[bold #f2f2f7]{root_label}[/bold #f2f2f7]")
             root_node.expand()
 
-            seen: dict[str, object] = {}
+            seen: dict[str, Any] = {}
             for row in rows:
                 from_id, from_group, from_label, edge, to_id, to_group, to_label = row
                 fc = _COLOR.get(from_group or "", "#8e8e93")
@@ -130,9 +133,9 @@ class GraphView(Widget):
                     )
                     seen[str(from_id)] = parent
 
-                parent.add_leaf(
+                parent.add(
                     f"[{tc}]{to_label or to_id}[/{tc}]  [#3a3a3c]{edge}[/#3a3a3c]",
-                    data=str(to_id)
+                    data=str(to_id),
                 )
 
             self.query_one("#graph-status", Static).update(

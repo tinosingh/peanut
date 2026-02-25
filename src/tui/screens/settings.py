@@ -1,4 +1,5 @@
 """Settings view — search weights, PII report, bulk redact."""
+
 from __future__ import annotations
 
 import os
@@ -126,7 +127,9 @@ class SettingsView(Widget):
                 f"[#636366]rrf_k={rrf_k}  ·  chunk_size={cfg.get('chunk_size', 512)}[/#636366]"
             )
         except Exception as exc:
-            self.query_one("#settings-status", Static).update(f"[#ff453a]error: {exc}[/#ff453a]")
+            self.query_one("#settings-status", Static).update(
+                f"[#ff453a]error: {exc}[/#ff453a]"
+            )
 
     def action_save_weights(self) -> None:
         self.run_worker(self._save_weights(), exclusive=False)
@@ -177,11 +180,21 @@ class SettingsView(Widget):
             tbl.clear()
 
             for p in data.get("persons", []):
-                tbl.add_row("PERSON", p.get("display_name", "?"), "[#ff9f0a]pii=true[/#ff9f0a]", str(p.get("doc_count", 0)))
+                tbl.add_row(
+                    "PERSON",
+                    p.get("display_name", "?"),
+                    "[#ff9f0a]pii=true[/#ff9f0a]",
+                    str(p.get("doc_count", 0)),
+                )
 
             for c in data.get("pii_chunks", []):
                 excerpt = (c.get("text", "")[:60]).replace("\n", " ")
-                tbl.add_row("CHUNK", excerpt, "[#ff9f0a]detected[/#ff9f0a]", c.get("doc_id", "?")[:8])
+                tbl.add_row(
+                    "CHUNK",
+                    excerpt,
+                    "[#ff9f0a]detected[/#ff9f0a]",
+                    c.get("doc_id", "?")[:8],
+                )
         except Exception as exc:
             self.notify(f"PII report failed: {exc}", severity="error")
 
@@ -189,7 +202,9 @@ class SettingsView(Widget):
         self.run_worker(self._bulk_redact(), exclusive=False)
 
     async def _bulk_redact(self) -> None:
-        self.query_one("#settings-status", Static).update("[#ff9f0a]redacting…[/#ff9f0a]")
+        self.query_one("#settings-status", Static).update(
+            "[#ff9f0a]redacting…[/#ff9f0a]"
+        )
         try:
             base = f"http://localhost:{os.getenv('API_PORT', '8000')}"
             headers = {}

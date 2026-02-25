@@ -446,4 +446,33 @@ tasks:
       - "pkg_chunks_total, pkg_ingest_latency_seconds, pkg_query_latency_seconds, pkg_outbox_depth"
       - "Optional scrape target in docker-compose.yml"
     prd_ref: "Story 4.6"
+
+  - id: T-046
+    title: "PUT /entities/{type}/{id} — bidirectional sync for Obsidian plugin"
+    priority: P2
+    status: done
+    depends_on: ["T-041"]
+    branch: "feat/T-046-T-047-put-entity-rate-limit"
+    pr_url: ""
+    head_sha: ""
+    acceptance_criteria:
+      - "PUT /entities/{type}/{id} accepts frontmatter diffs as JSON body"
+      - "Conflict rule: server updated_at > client_updated_at → conflict_detected=true, server value kept"
+      - "Non-conflict diffs applied atomically with outbox event for FalkorDB sync"
+      - "Unknown/unsafe fields rejected with 400"
+    prd_ref: "Story 4.1"
+
+  - id: T-047
+    title: "Rate limiting: slowapi 100 req/min per IP on all endpoints"
+    priority: P2
+    status: done
+    depends_on: ["T-020"]
+    branch: "feat/T-046-T-047-put-entity-rate-limit"
+    pr_url: ""
+    head_sha: ""
+    acceptance_criteria:
+      - "slowapi Limiter added to FastAPI app with default_limits=['100/minute']"
+      - "RateLimitExceeded returns HTTP 429"
+      - "Graceful degradation: if slowapi not installed, app starts normally without rate limiting"
+    prd_ref: "PRD §3.5"
 ```

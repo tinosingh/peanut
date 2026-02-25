@@ -10,6 +10,19 @@ from src.api.metrics import router as metrics_router
 from src.api.search import router as search_router
 
 app = FastAPI(title="pkg-tui", version="0.1.0")
+
+# ── Rate limiting (slowapi) — graceful degradation if not installed ────────
+try:
+    from slowapi import Limiter, _rate_limit_exceeded_handler
+    from slowapi.errors import RateLimitExceeded
+    from slowapi.util import get_remote_address
+
+    limiter = Limiter(key_func=get_remote_address, default_limits=["100/minute"])
+    app.state.limiter = limiter
+    app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+except ImportError:
+    pass  # slowapi not installed — rate limiting disabled
+
 app.include_router(search_router)
 app.include_router(entities_router)
 app.include_router(config_router)

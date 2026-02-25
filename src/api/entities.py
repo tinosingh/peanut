@@ -1,7 +1,8 @@
-"""Entities API — soft-delete and hard-delete endpoints.
+"""Entities API — soft-delete, hard-delete, and bidirectional sync endpoints.
 
 T-041: DELETE /entities/{id} sets deleted_at = now(); FalkorDB invalidation via outbox
 T-042: POST /entities/hard-delete (admin) deletes rows with deleted_at < now()-30d
+T-046: PUT /entities/{type}/{id} applies Obsidian frontmatter diffs; server timestamp wins
 """
 from __future__ import annotations
 
@@ -25,6 +26,27 @@ class SoftDeleteResponse(BaseModel):
     id: str
     entity_type: Literal["document", "person"]
     deleted_at: str
+
+
+class UpdateRequest(BaseModel):
+    """Frontmatter diff from Obsidian plugin.
+
+    Only the keys provided are updated; omitted keys are left unchanged.
+    client_updated_at must be provided so the server can apply the conflict rule:
+    if server.updated_at > client_updated_at the field is flagged as a conflict
+    and the server value wins.
+    """
+
+    diffs: dict[str, str | None]
+    client_updated_at: str  # ISO-8601 timestamp from Obsidian
+
+
+class UpdateResponse(BaseModel):
+    id: str
+    entity_type: Literal["document", "person"]
+    updated_fields: list[str]
+    conflict_detected: bool
+    server_updated_at: str
 
 
 class HardDeleteResponse(BaseModel):
@@ -224,3 +246,113 @@ async def merge_entities(name_a: str, name_b: str) -> dict:
             ("person_merged", json.dumps({"merged_from": id_b, "merged_into": id_a, "merged_at": now.isoformat()})),
         )
     return {"merged_from": id_b, "merged_into": id_a}
+
+
+# ── T-046: Bidirectional sync (Obsidian plugin) ────────────────────────────
+
+_PERSON_UPDATABLE = frozenset({"display_name", "email", "pii"})
+_DOCUMENT_UPDATABLE = frozenset({"source_path"})  # metadata fields go via JSON merge
+
+
+@router.put("/entities/{entity_type}/{entity_id}", response_model=UpdateResponse)
+async def update_entity(
+    entity_type: Literal["document", "person"],
+    entity_id: str,
+    req: UpdateRequest,
+) -> UpdateResponse:
+    """Apply frontmatter diffs from Obsidian plugin.
+
+    Conflict rule: server timestamp wins.
+    If the server's updated_at > client_updated_at, conflict_detected=True is
+    returned but the server value is kept unchanged for conflicting fields.
+    """
+    from src.shared.db import get_pool
+
+    pool = await get_pool()
+    table = "documents" if entity_type == "document" else "persons"
+    now = datetime.now(UTC)
+
+    try:
+        client_ts = datetime.fromisoformat(req.client_updated_at)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=f"Invalid client_updated_at: {exc}") from exc
+
+    allowed = _DOCUMENT_UPDATABLE if entity_type == "document" else _PERSON_UPDATABLE
+
+    # Filter to only updatable fields
+    safe_diffs = {k: v for k, v in req.diffs.items() if k in allowed}
+    if not safe_diffs:
+        raise HTTPException(status_code=400, detail=f"No updatable fields provided. Allowed: {sorted(allowed)}")
+
+    async with pool.connection() as conn:
+        # Fetch current row
+        result = await conn.execute(
+            f"SELECT updated_at FROM {table} WHERE id = %s::uuid AND deleted_at IS NULL",
+            (entity_id,),
+        )
+        row = await result.fetchone()
+        if not row:
+            raise HTTPException(status_code=404, detail=f"{entity_type} {entity_id} not found")
+
+        server_ts = row[0]
+        # Ensure timezone-aware comparison
+        if server_ts is not None and hasattr(server_ts, "tzinfo") and server_ts.tzinfo is None:
+            server_ts = server_ts.replace(tzinfo=UTC)
+        if client_ts.tzinfo is None:
+            client_ts = client_ts.replace(tzinfo=UTC)
+
+        conflict = server_ts is not None and server_ts > client_ts
+
+        if not conflict:
+            # Build SET clause for non-metadata columns
+            set_clauses = []
+            values = []
+            if entity_type == "person":
+                for field in ("display_name", "email"):
+                    if field in safe_diffs and safe_diffs[field] is not None:
+                        set_clauses.append(f"{field} = %s")
+                        values.append(safe_diffs[field])
+                if "pii" in safe_diffs and safe_diffs["pii"] is not None:
+                    set_clauses.append("pii = %s")
+                    values.append(safe_diffs["pii"].lower() == "true")
+            else:  # document
+                if "source_path" in safe_diffs and safe_diffs["source_path"] is not None:
+                    set_clauses.append("source_path = %s")
+                    values.append(safe_diffs["source_path"])
+                # Extra metadata fields go into the metadata JSONB column
+                meta_keys = {k: v for k, v in safe_diffs.items() if k not in _DOCUMENT_UPDATABLE}
+                if meta_keys:
+                    set_clauses.append("metadata = metadata || %s::jsonb")
+                    values.append(json.dumps(meta_keys))
+
+            if set_clauses:
+                set_clauses.append("updated_at = %s")
+                values.extend([now, entity_id])
+                await conn.execute(
+                    f"UPDATE {table} SET {', '.join(set_clauses)} WHERE id = %s::uuid",
+                    values,
+                )
+
+            # Outbox event for FalkorDB property sync
+            await conn.execute(
+                "INSERT INTO outbox (event_type, payload) VALUES (%s, %s)",
+                (
+                    "entity_updated",
+                    json.dumps({
+                        "entity_type": entity_type,
+                        "entity_id": entity_id,
+                        "diffs": safe_diffs,
+                        "updated_at": now.isoformat(),
+                    }),
+                ),
+            )
+
+    updated = list(safe_diffs.keys()) if not conflict else []
+    log.info("entity_updated", entity_type=entity_type, entity_id=entity_id, conflict=conflict)
+    return UpdateResponse(
+        id=entity_id,
+        entity_type=entity_type,
+        updated_fields=updated,
+        conflict_detected=conflict,
+        server_updated_at=(server_ts.isoformat() if server_ts else now.isoformat()),
+    )

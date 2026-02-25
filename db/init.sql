@@ -61,6 +61,8 @@ CREATE INDEX IF NOT EXISTS chunks_pending_idx
     ON chunks (embedding_status) WHERE embedding_status = 'pending';
 CREATE UNIQUE INDEX IF NOT EXISTS chunks_doc_idx_uniq
     ON chunks (doc_id, chunk_index);
+CREATE INDEX IF NOT EXISTS chunks_pii_idx
+    ON chunks (pii_detected) WHERE pii_detected = true;
 
 -- ── Outbox ─────────────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS outbox (
@@ -75,6 +77,9 @@ CREATE TABLE IF NOT EXISTS outbox (
 );
 CREATE INDEX IF NOT EXISTS outbox_unprocessed_idx
     ON outbox (created_at)
+    WHERE processed_at IS NULL AND NOT failed;
+CREATE INDEX IF NOT EXISTS outbox_drain_idx
+    ON outbox (processed_at, failed, created_at)
     WHERE processed_at IS NULL AND NOT failed;
 
 -- ── Dead letter ────────────────────────────────────────────────────────────

@@ -22,6 +22,11 @@ services:
       interval: 5s
       timeout: 5s
       retries: 18   # 90s total
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '2'
     networks:
       - pkg-net
 
@@ -38,13 +43,18 @@ services:
       interval: 5s
       timeout: 5s
       retries: 18
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '1'
     networks:
       - pkg-net
 
   pkg-graph-init:
     image: falkordb/falkordb:v4.14.9
     container_name: pkg-graph-init
-    restart: "no"
+    restart: on-failure
     depends_on:
       pkg-graph:
         condition: service_healthy
@@ -84,11 +94,16 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"   # Linux compatibility
     healthcheck:
-      test: ["CMD-SHELL", "python -c 'import src.ingest; print(\"ok\")'"]
+      test: ["CMD-SHELL", "test -d ${DROP_ZONE_PATH:-/drop-zone} && python -c 'import src.ingest; print(\"ok\")'"]
       interval: 10s
       timeout: 5s
       retries: 9
       start_period: 15s
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: '2'
     networks:
       - pkg-net
 
@@ -122,6 +137,11 @@ services:
       timeout: 5s
       retries: 9
       start_period: 20s
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: '2'
     networks:
       - pkg-net
 

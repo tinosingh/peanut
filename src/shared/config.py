@@ -28,9 +28,9 @@ async def get_config(pool: Any) -> dict[str, Any]:
     """Read all config keys from the config table. Falls back to defaults."""
     try:
         async with pool.connection() as conn:
-            rows = await conn.execute(
+            rows = await (await conn.execute(
                 "SELECT key, value, value_type FROM config"
-            ).fetchall()
+            )).fetchall()
         config = dict(_DEFAULTS)
         for key, value, value_type in rows:
             if value_type == "int":

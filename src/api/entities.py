@@ -225,7 +225,10 @@ async def get_merge_candidates() -> dict:
 
 @router.post("/entities/merge")
 async def merge_entities(name_a: str, name_b: str) -> dict:
-    """Merge person name_b into name_a (sets merged_into FK + outbox event)."""
+    """Merge person name_b into name_a (sets merged_into FK + outbox event).
+    
+    AUDIT: This operation is logged for security/compliance.
+    """
     from src.shared.db import get_pool
     pool = await get_pool()
     now = datetime.now(UTC)

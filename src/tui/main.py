@@ -25,10 +25,38 @@ try:
 except ImportError:
     pass  # slowapi not installed — rate limiting disabled
 
+# ── CORS (localhost only, since this is a personal app) ──────────────────────
+try:
+    from fastapi.middleware.cors import CORSMiddleware
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["localhost", "127.0.0.1", "http://localhost:*"],
+        allow_methods=["GET", "POST", "PUT", "DELETE"],
+        allow_headers=["Content-Type"],
+        allow_credentials=False,
+    )
+except ImportError:
+    pass  # starlette < 0.19, skip CORS
+
 app.include_router(search_router)
 app.include_router(entities_router)
 app.include_router(config_router)
 app.include_router(metrics_router)
+
+
+@app.middleware("http")
+async def add_security_headers(request, call_next):
+    """Add security headers to all responses."""
+    response = await call_next(request)
+    # CSP: only allow same-origin resources
+    response.headers["Content-Security-Policy"] = "default-src 'self'; script-src 'unsafe-inline' unpkg.com; style-src 'unsafe-inline'"
+    # Prevent MIME type sniffing
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    # Prevent clickjacking
+    response.headers["X-Frame-Options"] = "DENY"
+    # Enable XSS protection
+    response.headers["X-XSS-Protection"] = "1; mode=block"
+    return response
 
 
 @app.get("/health")

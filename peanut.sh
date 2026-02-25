@@ -95,9 +95,20 @@ start_services() {
     echo -e "${GREEN}✓${NC} Services started"
     echo ""
     echo -e "${YELLOW}Waiting for services to be ready...${NC}"
-    sleep 10
-    
+
+    # Wait for pkg-db and pkg-tui to become healthy (up to 90s)
+    for i in $(seq 1 18); do
+        DB_STATUS=$(docker inspect pkg-db --format="{{.State.Health.Status}}" 2>/dev/null)
+        TUI_STATUS=$(docker inspect pkg-tui --format="{{.State.Health.Status}}" 2>/dev/null)
+        if [ "$DB_STATUS" = "healthy" ] && [ "$TUI_STATUS" = "healthy" ]; then
+            echo -e "${GREEN}✓${NC} Services are healthy"
+            break
+        fi
+        echo -n "."
+        sleep 5
+    done
     echo ""
+
     echo -e "${BLUE}Status:${NC}"
     docker-compose ps
     
@@ -143,55 +154,65 @@ reset_services() {
 check_health() {
     echo -e "${BLUE}Checking service health...${NC}"
     echo ""
-    
+    HEALTH_OK=true
+
     # Check Docker Compose status
     echo -e "${YELLOW}1. Docker Compose Services:${NC}"
     if docker-compose ps | grep -q "Exit"; then
         echo -e "${RED}✗${NC} Some services are not running"
         docker-compose ps
-        exit 1
+        HEALTH_OK=false
     else
         echo -e "${GREEN}✓${NC} All services running"
     fi
     echo ""
-    
+
     # Check API health
     echo -e "${YELLOW}2. API Health:${NC}"
-    if curl -s http://localhost:8000/health | grep -q "ok"; then
+    if curl -s http://localhost:8000/health 2>/dev/null | grep -q "ok"; then
         echo -e "${GREEN}✓${NC} API is healthy"
     else
         echo -e "${RED}✗${NC} API health check failed"
+        HEALTH_OK=false
     fi
     echo ""
-    
+
     # Check Database
     echo -e "${YELLOW}3. Database:${NC}"
     if docker exec pkg-db psql -U pkg -d pkg -c "SELECT 1" >/dev/null 2>&1; then
         echo -e "${GREEN}✓${NC} Database is accessible"
     else
         echo -e "${RED}✗${NC} Database check failed"
+        HEALTH_OK=false
     fi
     echo ""
-    
+
     # Check FalkorDB
     echo -e "${YELLOW}4. FalkorDB (Graph):${NC}"
-    if docker exec pkg-graph redis-cli PING | grep -q "PONG"; then
+    if docker exec pkg-graph redis-cli PING 2>/dev/null | grep -q "PONG"; then
         echo -e "${GREEN}✓${NC} FalkorDB is accessible"
     else
         echo -e "${RED}✗${NC} FalkorDB check failed"
+        HEALTH_OK=false
     fi
     echo ""
-    
-    # Check Ollama
+
+    # Check Ollama (warning only — runs on host, optional for read operations)
     echo -e "${YELLOW}5. Ollama (Embeddings):${NC}"
-    if docker exec pkg-ingest curl -s http://host.docker.internal:11434/api/tags >/dev/null 2>&1; then
+    if curl -s --max-time 3 http://localhost:11434/api/tags >/dev/null 2>&1; then
         echo -e "${GREEN}✓${NC} Ollama is accessible"
     else
-        echo -e "${RED}✗${NC} Ollama is not reachable (ensure Ollama is running on host)"
+        echo -e "${YELLOW}⚠${NC} Ollama is not reachable — embedding and search will degrade"
+        echo -e "  Start Ollama on the host: ${BLUE}ollama serve${NC}"
     fi
     echo ""
-    
-    echo -e "${GREEN}All systems operational!${NC}"
+
+    if [ "$HEALTH_OK" = true ]; then
+        echo -e "${GREEN}All systems operational!${NC}"
+    else
+        echo -e "${RED}One or more services are unhealthy. Check logs: ./peanut.sh logs${NC}"
+        exit 1
+    fi
 }
 
 launch_tui() {

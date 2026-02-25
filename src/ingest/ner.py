@@ -11,6 +11,7 @@ Entity types extracted:
 from __future__ import annotations
 
 import functools
+
 import structlog
 
 log = structlog.get_logger()

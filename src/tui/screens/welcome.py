@@ -4,8 +4,7 @@ from __future__ import annotations
 from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.screen import Screen
-from textual.widgets import Static, Footer
-
+from textual.widgets import Footer, Static
 
 WELCOME_TEXT = """\
 [bold cyan]Welcome to PKG[/bold cyan]

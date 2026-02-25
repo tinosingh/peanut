@@ -9,8 +9,8 @@ Signals:
 """
 from __future__ import annotations
 
-import re
 import functools
+import re
 
 import structlog
 
@@ -70,7 +70,7 @@ def scan_text(text: str) -> dict:
 
 async def _scan_unscanned() -> None:
     """Retroactively scan all chunks and set pii_detected flag."""
-    from src.shared.db import get_pool, close_pool
+    from src.shared.db import close_pool, get_pool
 
     pool = await get_pool()
     total = updated = 0

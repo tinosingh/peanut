@@ -49,7 +49,7 @@ async def _embed_batch(ollama_url: str, model: str, texts: list[str]) -> list[li
 
 async def reindex(confirm_rename: bool = False) -> None:
     """Re-embed all chunks to embedding_v2. Optionally rename columns."""
-    from src.shared.db import get_pool, close_pool
+    from src.shared.db import close_pool, get_pool
 
     ollama_url = os.getenv("OLLAMA_URL", "http://host.docker.internal:11434")
     model = os.getenv(REINDEX_MODEL_ENV) or os.getenv("EMBED_MODEL", "nomic-embed-text")
@@ -85,7 +85,7 @@ async def reindex(confirm_rename: bool = False) -> None:
             continue
 
         async with pool.connection() as conn:
-            for chunk_id, emb in zip(ids, embeddings):
+            for chunk_id, emb in zip(ids, embeddings, strict=False):
                 await conn.execute(
                     "UPDATE chunks SET embedding_v2 = %s::vector WHERE id = %s::uuid",
                     (emb, chunk_id),

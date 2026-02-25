@@ -17,7 +17,6 @@ import json
 from pathlib import Path
 from typing import NamedTuple
 
-
 # ── Jaro-Winkler ─────────────────────────────────────────────────────────────
 
 def _jaro(s1: str, s2: str) -> float:
@@ -59,7 +58,7 @@ def jaro_winkler(s1: str, s2: str, p: float = 0.1) -> float:
     """Jaro-Winkler similarity (higher weight for common prefix)."""
     jaro = _jaro(s1.lower(), s2.lower())
     prefix = 0
-    for c1, c2 in zip(s1[:4], s2[:4]):
+    for c1, c2 in zip(s1[:4], s2[:4], strict=False):
         if c1.lower() == c2.lower():
             prefix += 1
         else:

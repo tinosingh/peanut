@@ -1,8 +1,6 @@
 """PDF parser using pdfminer.six."""
 from __future__ import annotations
 
-from io import StringIO
-
 import structlog
 
 log = structlog.get_logger()

@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import os
 import time
-from typing import Any, Optional
+from typing import Any
 
 import httpx
 import structlog
@@ -21,8 +21,8 @@ from fastapi import APIRouter
 from pydantic import BaseModel, Field
 
 from src.shared.config import get_config
-from src.shared.rrf import rrf_merge, weighted_merge
 from src.shared.reranker import rerank
+from src.shared.rrf import rrf_merge, weighted_merge
 
 log = structlog.get_logger()
 
@@ -32,7 +32,7 @@ router = APIRouter()
 _cache: dict[tuple, tuple[float, Any]] = {}  # key -> (expires_at, value)
 
 
-def _cache_get(key: tuple) -> Optional[Any]:
+def _cache_get(key: tuple) -> Any | None:
     entry = _cache.get(key)
     if entry and entry[0] > time.monotonic():
         return entry[1]
@@ -70,7 +70,7 @@ class SearchResponse(BaseModel):
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
-async def _embed_query(query: str, model: str) -> Optional[list[float]]:
+async def _embed_query(query: str, model: str) -> list[float] | None:
     """Call Ollama on host to embed the query."""
     ollama_url = os.getenv("OLLAMA_URL", "http://host.docker.internal:11434")
     try:
@@ -107,7 +107,6 @@ async def _ann_search(
     conn, embedding: list[float], limit: int
 ) -> list[tuple[str, float]]:
     """Return [(chunk_id, cosine_similarity)] sorted best-first."""
-    from pgvector.psycopg import register_vector
     rows = await conn.execute(
         """
         SELECT id::text, 1 - (embedding <=> %s::vector) AS score
@@ -215,7 +214,7 @@ async def search(req: SearchRequest) -> SearchResponse:
         if len(valid_ids) >= 5:
             degraded = True
     else:
-        rerank_scores = dict(zip(valid_ids, rerank_scores_list))
+        rerank_scores = dict(zip(valid_ids, rerank_scores_list, strict=False))
         # Re-sort by rerank score descending
         valid_ids = sorted(valid_ids, key=lambda cid: rerank_scores[cid], reverse=True)
 

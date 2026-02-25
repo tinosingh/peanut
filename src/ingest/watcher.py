@@ -3,11 +3,11 @@ from __future__ import annotations
 
 import asyncio
 import hashlib
+from collections.abc import Awaitable, Callable
 from pathlib import Path
-from typing import Callable, Awaitable
 
 import structlog
-from watchfiles import awatch, DefaultFilter
+from watchfiles import DefaultFilter, awatch
 
 log = structlog.get_logger()
 

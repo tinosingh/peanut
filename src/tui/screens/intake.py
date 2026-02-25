@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import os
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from textual.app import ComposeResult
 from textual.binding import Binding
@@ -76,7 +76,7 @@ class IntakeScreen(Screen):
 
             table = self.query_one(DataTable)
             table.clear()
-            now = datetime.now(timezone.utc)
+            now = datetime.now(UTC)
             for source_path, ingested_at, total, done, failed in rows:
                 fname = source_path.split("/")[-1] if source_path else "?"
                 total = total or 0
@@ -93,7 +93,7 @@ class IntakeScreen(Screen):
                 progress = f"{done}/{total}" if total else "—"
                 # Heartbeat: seconds since ingest
                 if ingested_at:
-                    elapsed = (now - ingested_at.replace(tzinfo=timezone.utc) if ingested_at.tzinfo is None else now - ingested_at)
+                    elapsed = (now - ingested_at.replace(tzinfo=UTC) if ingested_at.tzinfo is None else now - ingested_at)
                     heartbeat = f"{int(elapsed.total_seconds())}s ago"
                     if elapsed.total_seconds() > 120:
                         heartbeat = f"[WARNING] {heartbeat}"
@@ -138,7 +138,7 @@ class IntakeScreen(Screen):
             from src.shared.db import get_pool
             pool = await get_pool()
             async with pool.connection() as conn:
-                result = await conn.execute(
+                await conn.execute(
                     "UPDATE chunks SET embedding_status = 'pending', retry_count = 0 "
                     "WHERE embedding_status = 'failed'"
                 )

@@ -9,7 +9,6 @@ Reranking skipped for < 5 results (not worth the latency).
 from __future__ import annotations
 
 import functools
-from typing import Optional
 
 import structlog
 
@@ -33,7 +32,7 @@ def _get_reranker():
 def rerank(
     query: str,
     candidates: list[str],
-) -> Optional[list[float]]:
+) -> list[float] | None:
     """Rerank candidates for query. Returns scores or None if unavailable.
 
     Returns None (triggering graceful degradation) when:

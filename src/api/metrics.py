@@ -23,6 +23,7 @@ async def metrics() -> Response:
     """Prometheus text format metrics."""
     try:
         import prometheus_client  # noqa: F401 — verify SDK available
+
         from src.shared.db import get_pool
 
         pool = await get_pool()

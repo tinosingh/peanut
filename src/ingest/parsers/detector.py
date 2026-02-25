@@ -4,7 +4,6 @@ from __future__ import annotations
 import functools
 from pathlib import Path
 
-
 _EXT_MAP = {
     "mbox": "mbox", "mbx": "mbox",
     "pdf": "pdf",

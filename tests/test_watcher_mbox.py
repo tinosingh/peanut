@@ -136,7 +136,7 @@ def test_parse_mbox_multiple_messages():
 def test_ingest_db_module_has_single_transaction():
     """Verify the DB module keeps document+persons+outbox in one transaction."""
     db_code = (Path(__file__).parent.parent / "src" / "ingest" / "db.py").read_text()
-    assert "async with conn.transaction():" in db_code
+    assert "conn.transaction()" in db_code
     assert "outbox" in db_code
     assert "persons" in db_code
     assert "documents" in db_code

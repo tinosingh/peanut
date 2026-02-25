@@ -367,7 +367,7 @@ tasks:
   - id: T-040
     title: "Auth: scoped API keys per service; make rotate-keys"
     priority: P2
-    status: pending
+    status: done
     depends_on: ["T-020"]
     branch: ""
     pr_url: ""
@@ -381,7 +381,7 @@ tasks:
   - id: T-041
     title: "Soft-delete: deleted_at on documents/persons; TUI confirmation modal"
     priority: P2
-    status: pending
+    status: done
     depends_on: ["T-019"]
     branch: ""
     pr_url: ""
@@ -396,7 +396,7 @@ tasks:
   - id: T-042
     title: "Hard delete: 30-day quarantine gate via make hard-delete --confirm"
     priority: P2
-    status: pending
+    status: done
     depends_on: ["T-041"]
     branch: ""
     pr_url: ""
@@ -410,7 +410,7 @@ tasks:
   - id: T-043
     title: "PII report: TUI Settings view with persons (pii=true) + pii_detected chunks; bulk redact"
     priority: P2
-    status: pending
+    status: done
     depends_on: ["T-041"]
     branch: ""
     pr_url: ""
@@ -424,7 +424,7 @@ tasks:
   - id: T-044
     title: "TUI Settings: BM25/vector weight sliders writing to config table"
     priority: P3
-    status: pending
+    status: done
     depends_on: ["T-021"]
     branch: ""
     pr_url: ""
@@ -437,7 +437,7 @@ tasks:
   - id: T-045
     title: "Prometheus metrics: /metrics on port 9090 (deferred, YAGNI)"
     priority: P3
-    status: pending
+    status: done
     depends_on: ["T-020"]
     branch: ""
     pr_url: ""

@@ -4,14 +4,18 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from src.ingest.embedding_worker import EMBED_QUEUE, call_ollama_embed
+from src.ingest.embedding_worker import call_ollama_embed
 from src.ingest.outbox_worker import OUTBOX_MAX_ATTEMPTS, _apply_outbox_event
+from src.ingest.retry import MAX_RETRIES, retry_dead_letters
+from src.shared.config import _DEFAULTS, get_config
 
 # ── T-015: Embedding worker ────────────────────────────────────────────────
 
-def test_embed_queue_bounded():
-    """EMBED_QUEUE maxsize must be 500 (backpressure guard)."""
-    assert EMBED_QUEUE.maxsize == 500
+def test_embed_circuit_breaker_constants():
+    """Embedding worker must have circuit breaker constants defined."""
+    from src.ingest.embedding_worker import _CIRCUIT_BREAKER_BACKOFF, _CONSECUTIVE_ERROR_THRESHOLD
+    assert _CONSECUTIVE_ERROR_THRESHOLD >= 5
+    assert _CIRCUIT_BREAKER_BACKOFF >= 30
 
 
 @pytest.mark.asyncio
@@ -70,8 +74,11 @@ def test_apply_outbox_document_added():
         "recipients": [{"email": "bob@example.com", "field": "to"}],
     }
     _apply_outbox_event(mock_graph, "document_added", payload)
-    # Should be called twice: once for SENT, once for RECEIVED
-    assert mock_graph.query.call_count == 2
+    # Batched into single Cypher query (sender + all recipients)
+    assert mock_graph.query.call_count == 1
+    cypher = mock_graph.query.call_args[0][0]
+    assert "SENT" in cypher
+    assert "RECEIVED" in cypher
 
 
 def test_apply_outbox_entity_deleted():
@@ -99,3 +106,100 @@ def test_outbox_worker_dead_letters_after_max_attempts():
     code = (Path(__file__).parent.parent / "src" / "ingest" / "outbox_worker.py").read_text()
     assert "failed = true" in code
     assert "max attempts exceeded" in code
+
+
+# ── retry_dead_letters ─────────────────────────────────────────────────────
+
+def _make_pool(fetchall_rows):
+    """Build a mock AsyncConnectionPool whose execute().fetchall() returns rows."""
+    mock_cursor = AsyncMock()
+    mock_cursor.fetchall.return_value = fetchall_rows
+
+    mock_conn = AsyncMock()
+    mock_conn.execute.return_value = mock_cursor
+
+    mock_conn_ctx = AsyncMock()
+    mock_conn_ctx.__aenter__.return_value = mock_conn
+    mock_conn_ctx.__aexit__.return_value = False
+
+    mock_pool = MagicMock()
+    mock_pool.connection.return_value = mock_conn_ctx
+    return mock_pool, mock_conn
+
+
+@pytest.mark.asyncio
+async def test_retry_dead_letters_recovers(tmp_path):
+    """Successful handle_file call increments recovered count and DELETEs row."""
+    test_file = tmp_path / "test.mbox"
+    test_file.write_bytes(b"hello world")
+
+    mock_pool, mock_conn = _make_pool([(42, str(test_file), 1)])
+    handle_file = AsyncMock()
+
+    result = await retry_dead_letters(mock_pool, handle_file)
+
+    assert result == 1
+    handle_file.assert_called_once()
+    # The sha passed should be a hex string
+    sha_arg = handle_file.call_args[0][1]
+    assert len(sha_arg) == 64  # SHA-256 hex
+    # DELETE should have been executed
+    calls_sql = [str(c) for c in mock_conn.execute.call_args_list]
+    assert any("DELETE FROM dead_letter" in s for s in calls_sql)
+
+
+@pytest.mark.asyncio
+async def test_retry_dead_letters_skips_over_max(tmp_path):
+    """Rows with attempts > MAX_RETRIES are skipped without calling handle_file."""
+    test_file = tmp_path / "test.mbox"
+    test_file.write_bytes(b"hello world")
+
+    mock_pool, _ = _make_pool([(99, str(test_file), MAX_RETRIES + 1)])
+    handle_file = AsyncMock()
+
+    result = await retry_dead_letters(mock_pool, handle_file)
+
+    assert result == 0
+    handle_file.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_retry_dead_letters_updates_on_failure(tmp_path):
+    """When handle_file raises, attempts is incremented and recovered stays 0."""
+    test_file = tmp_path / "test.mbox"
+    test_file.write_bytes(b"hello world")
+
+    mock_pool, mock_conn = _make_pool([(7, str(test_file), 1)])
+    handle_file = AsyncMock(side_effect=RuntimeError("embed failed"))
+
+    result = await retry_dead_letters(mock_pool, handle_file)
+
+    assert result == 0
+    calls_sql = [str(c) for c in mock_conn.execute.call_args_list]
+    assert any("UPDATE dead_letter" in s for s in calls_sql)
+
+
+# ── get_config ─────────────────────────────────────────────────────────────
+
+@pytest.mark.asyncio
+async def test_get_config_returns_db_values():
+    """get_config coerces int/float values from DB rows correctly."""
+    rows = [("rrf_k", "30", "int"), ("bm25_weight", "0.7", "float"), ("embed_model", "my-model", "str")]
+    mock_pool, _ = _make_pool(rows)
+
+    config = await get_config(mock_pool)
+
+    assert config["rrf_k"] == 30
+    assert config["bm25_weight"] == pytest.approx(0.7)
+    assert config["embed_model"] == "my-model"
+
+
+@pytest.mark.asyncio
+async def test_get_config_falls_back_to_defaults():
+    """get_config returns _DEFAULTS when DB raises."""
+    mock_pool = MagicMock()
+    mock_pool.connection.side_effect = RuntimeError("db down")
+
+    config = await get_config(mock_pool)
+
+    assert config == _DEFAULTS

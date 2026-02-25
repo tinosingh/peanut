@@ -146,3 +146,31 @@ def test_main_slowapi_in_try_except():
     except_idx = content.index("except ImportError")
     from_slowapi_idx = content.index("from slowapi import")
     assert try_idx < from_slowapi_idx < except_idx
+
+
+def test_api_key_auth_is_enforced():
+    """enforce_api_key middleware must be wired in main.py (not just defined)."""
+    content = (ROOT / "src" / "tui" / "main.py").read_text()
+    assert "enforce_api_key" in content
+    assert "check_api_key" in content
+    # Health endpoint must be excluded from auth
+    assert '"/health"' in content
+
+
+def test_update_request_diffs_validator_present():
+    """UpdateRequest.diffs must have a field_validator limiting size."""
+    content = (ROOT / "src" / "api" / "entities.py").read_text()
+    assert "field_validator" in content
+    assert "diffs_bounded" in content
+    # Bounds must be present
+    assert "50" in content   # max 50 fields
+    assert "100" in content  # max 100-char key
+    assert "10_000" in content  # max 10,000-char value
+
+
+def test_hard_delete_uses_parameterised_cutoff():
+    """hard_delete must use a Python datetime parameter, not an f-string interval."""
+    content = (ROOT / "src" / "api" / "entities.py").read_text()
+    assert "timedelta(days=30)" in content
+    # No f-string SQL interpolation for cutoff
+    assert "INTERVAL '30 days'" not in content

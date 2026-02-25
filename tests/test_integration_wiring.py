@@ -28,9 +28,14 @@ def test_ingest_main_uses_chunk_text():
 
 
 def test_ingest_main_inserts_chunks():
-    content = (ROOT / "src" / "ingest" / "main.py").read_text()
-    assert "_insert_chunks" in content
-    assert "chunk_index" in content or "chunk.index" in content
+    # Chunks are now inserted inside ingest_document() transaction for atomicity
+    db_content = (ROOT / "src" / "ingest" / "db.py").read_text()
+    assert "INSERT INTO chunks" in db_content
+    assert "chunk_index" in db_content or "chunk.index" in db_content
+    # main.py passes chunks/pii_flags to ingest_document
+    main_content = (ROOT / "src" / "ingest" / "main.py").read_text()
+    assert "chunks=chunks" in main_content
+    assert "pii_flags=pii_flags" in main_content
 
 
 def test_ingest_main_handles_mbox_pdf_markdown():

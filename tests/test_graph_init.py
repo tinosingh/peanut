@@ -26,10 +26,10 @@ def test_graph_init_service_depends_on_pkg_graph():
     assert "service_healthy" in section
 
 
-def test_graph_init_service_no_restart():
+def test_graph_init_service_restart_on_failure():
     idx_init = COMPOSE.index("pkg-graph-init:")
     section = COMPOSE[idx_init:idx_init + 300]
-    assert 'restart: "no"' in section
+    assert "restart: on-failure" in section
 
 
 def test_app_services_wait_for_graph_init():

@@ -4,6 +4,9 @@ T-043 (PII report), T-044 (weight sliders), T-045 (Prometheus metrics).
 from __future__ import annotations
 
 from pathlib import Path
+from unittest.mock import MagicMock, patch
+
+import pytest
 
 ROOT = Path(__file__).parent.parent
 
@@ -196,3 +199,71 @@ def test_tui_main_includes_all_epic4_routers():
     assert "entities_router" in content
     assert "config_router" in content
     assert "metrics_router" in content
+
+
+# ── Functional auth tests (skipped if fastapi not installed) ──────────────────
+
+def _make_request(path: str, api_key: str) -> MagicMock:
+    req = MagicMock()
+    req.url.path = path
+    req.headers.get.return_value = api_key
+    return req
+
+
+def test_generate_key_returns_prefixed_token():
+    pytest.importorskip("fastapi")
+    from src.api.auth import generate_key
+    key = generate_key("pkg")
+    assert key.startswith("pkg_")
+    assert len(key) > 20  # token_urlsafe(32) → 43 chars + prefix
+
+
+def test_generate_key_unique():
+    pytest.importorskip("fastapi")
+    from src.api.auth import generate_key
+    assert generate_key() != generate_key()
+
+
+def test_check_api_key_allows_read_key_on_search():
+    pytest.importorskip("fastapi")
+    from src.api.auth import check_api_key
+    with patch.dict("os.environ", {"API_KEY_READ": "read-key-abc", "API_KEY_WRITE": "write-key-xyz"}):
+        req = _make_request("/search", "read-key-abc")
+        check_api_key(req)  # must not raise
+
+
+def test_check_api_key_rejects_read_key_on_write_path():
+    pytest.importorskip("fastapi")
+    from src.api.auth import check_api_key
+    with patch.dict("os.environ", {"API_KEY_READ": "read-key-abc", "API_KEY_WRITE": "write-key-xyz"}):
+        req = _make_request("/ingest/text", "read-key-abc")
+        with pytest.raises(Exception) as exc_info:
+            check_api_key(req)
+        assert exc_info.value.status_code == 403
+
+
+def test_check_api_key_allows_write_key_on_write_path():
+    pytest.importorskip("fastapi")
+    from src.api.auth import check_api_key
+    with patch.dict("os.environ", {"API_KEY_READ": "read-key-abc", "API_KEY_WRITE": "write-key-xyz"}):
+        req = _make_request("/ingest/text", "write-key-xyz")
+        check_api_key(req)  # must not raise
+
+
+def test_check_api_key_disabled_when_no_env_vars():
+    pytest.importorskip("fastapi")
+    from src.api.auth import check_api_key
+    with patch.dict("os.environ", {}, clear=True):
+        req = _make_request("/search", "anything")
+        check_api_key(req)  # no-op when keys not configured
+
+
+def test_check_api_key_raises_401_with_no_header():
+    pytest.importorskip("fastapi")
+    from src.api.auth import check_api_key
+    with patch.dict("os.environ", {"API_KEY_READ": "read-key-abc"}):
+        req = _make_request("/search", "")
+        req.headers.get.return_value = ""
+        with pytest.raises(Exception) as exc_info:
+            check_api_key(req)
+        assert exc_info.value.status_code == 401

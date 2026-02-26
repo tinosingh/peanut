@@ -5,7 +5,7 @@ import asyncio
 import logging
 import os
 import signal
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 
 import structlog
 
@@ -28,9 +28,13 @@ async def _handle_file(path: str, sha: str) -> None:
     log.info("ingest_file_start", path=path, sha=sha)
     pool = await get_pool()
 
-    if await sha256_exists(pool, sha):
-        log.info("ingest_skip_duplicate", path=path)
-        return
+    file_type = detect_type(path)
+
+    # Dedup check: only for non-mbox files
+    if file_type != "mbox":
+        if await sha256_exists(pool, sha):
+            log.info("ingest_skip_duplicate", path=path)
+            return
 
     cfg = await get_config(pool)
     chunk_size = max(1, int(cfg.get("chunk_size", 512)))
@@ -40,15 +44,21 @@ async def _handle_file(path: str, sha: str) -> None:
             chunk_size=chunk_size, chunk_overlap=chunk_overlap)
         chunk_overlap = chunk_size // 4
     vault_sync_path = os.getenv("VAULT_SYNC_PATH", "./vault-sync")
-    now = datetime.now(UTC)
+    now = datetime.now(timezone.utc)
 
     try:
-        file_type = detect_type(path)
         if file_type == "mbox":
+            from src.ingest.db import message_id_exists
             for item in parse_mbox(path):
                 if isinstance(item, Exception):
                     log.warning("mbox_parse_error", path=path, error=str(item))
                     continue
+                
+                # Intra-mbox dedup by message_id
+                if await message_id_exists(pool, item.message_id):
+                    log.info("mbox_skip_duplicate_msg", message_id=item.message_id)
+                    continue
+
                 text = item.body_text or ""
                 chunks = chunk_text(text, chunk_size, chunk_overlap)
                 pii_flags = [has_pii(c.text) for c in chunks]
@@ -57,6 +67,7 @@ async def _handle_file(path: str, sha: str) -> None:
                     source_path=path,
                     source_type="mbox",
                     sha256=sha,
+                    message_id=item.message_id,
                     sender_email=item.sender_email or "",
                     sender_name=item.sender_name or "",
                     recipients=item.recipients,

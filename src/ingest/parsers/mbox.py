@@ -14,7 +14,7 @@ import mailbox
 import uuid
 from collections.abc import Iterator
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from email.header import decode_header
 
 import structlog
@@ -103,11 +103,11 @@ def parse_mbox(path: str) -> Iterator[ParsedMessage | Exception]:
                 try:
                     date = email.utils.parsedate_to_datetime(date_raw)
                     if date.tzinfo is None:
-                        date = date.replace(tzinfo=UTC)
+                        date = date.replace(tzinfo=timezone.utc)
                 except Exception:
-                    date = datetime.now(UTC)
+                    date = datetime.now(timezone.utc)
             else:
-                date = datetime.now(UTC)
+                date = datetime.now(timezone.utc)
 
             msg_id = msg.get("message-id", str(uuid.uuid4()))
 

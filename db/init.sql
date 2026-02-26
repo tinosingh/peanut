@@ -11,11 +11,17 @@ CREATE TABLE IF NOT EXISTS documents (
     id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     source_path TEXT NOT NULL,
     source_type TEXT NOT NULL CHECK (source_type IN ('mbox', 'pdf', 'markdown')),
-    sha256      CHAR(64) UNIQUE NOT NULL,
+    sha256      CHAR(64) NOT NULL,
+    message_id  TEXT,
     ingested_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     deleted_at  TIMESTAMPTZ,
     metadata    JSONB
 );
+-- Unique constraint:
+-- 1. For non-mbox (message_id is NULL), sha256 must be unique.
+-- 2. For mbox (message_id is NOT NULL), message_id must be unique.
+CREATE UNIQUE INDEX IF NOT EXISTS documents_sha256_uniq_idx ON documents (sha256) WHERE message_id IS NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS documents_message_id_uniq_idx ON documents (message_id) WHERE message_id IS NOT NULL;
 CREATE INDEX IF NOT EXISTS documents_active_idx
     ON documents (id) WHERE deleted_at IS NULL;
 
@@ -50,7 +56,8 @@ CREATE TABLE IF NOT EXISTS chunks (
     embedding_status embedding_status_enum NOT NULL DEFAULT 'pending',
     embedded_at      TIMESTAMPTZ,
     retry_count      INT NOT NULL DEFAULT 0,
-    pii_detected     BOOLEAN NOT NULL DEFAULT false
+    pii_detected     BOOLEAN NOT NULL DEFAULT false,
+    token_count      INT NOT NULL DEFAULT 0
 );
 CREATE INDEX IF NOT EXISTS chunks_tsv_idx
     ON chunks USING GIN (tsv);

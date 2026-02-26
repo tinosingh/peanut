@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import json
 import uuid
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from typing import Any
 
 import structlog
@@ -24,7 +24,19 @@ async def sha256_exists(pool: AsyncConnectionPool, sha256: str) -> bool:
     """Return True if this sha256 is already in documents (dedup)."""
     async with pool.connection() as conn:
         result = await conn.execute(
-            "SELECT 1 FROM documents WHERE sha256 = %s", (sha256,)
+            "SELECT 1 FROM documents WHERE sha256 = %s AND message_id IS NULL", (sha256,)
+        )
+        row = await result.fetchone()
+        return row is not None
+
+
+async def message_id_exists(pool: AsyncConnectionPool, message_id: str) -> bool:
+    """Return True if this message_id is already in documents (dedup)."""
+    if not message_id:
+        return False
+    async with pool.connection() as conn:
+        result = await conn.execute(
+            "SELECT 1 FROM documents WHERE message_id = %s", (message_id,)
         )
         row = await result.fetchone()
         return row is not None
@@ -36,6 +48,7 @@ async def ingest_document(
     source_path: str,
     source_type: str,    # 'mbox' | 'pdf' | 'markdown'
     sha256: str,
+    message_id: str | None = None,
     sender_email: str,
     sender_name: str,
     recipients: list[dict],
@@ -48,16 +61,16 @@ async def ingest_document(
     Returns the new document UUID.
     """
     doc_id = str(uuid.uuid4())
-    now = datetime.now(UTC)
+    now = datetime.now(timezone.utc)
 
     async with pool.connection() as conn, conn.transaction():
         # 1. Insert document
         await conn.execute(
             """
-                INSERT INTO documents (id, source_path, source_type, sha256, ingested_at, metadata)
-                VALUES (%s, %s, %s, %s, %s, %s)
+                INSERT INTO documents (id, source_path, source_type, sha256, message_id, ingested_at, metadata)
+                VALUES (%s, %s, %s, %s, %s, %s, %s)
                 """,
-            (doc_id, source_path, source_type, sha256, now, json.dumps(metadata or {})),
+            (doc_id, source_path, source_type, sha256, message_id, now, json.dumps(metadata or {})),
         )
 
         # 2. UPSERT sender
@@ -92,11 +105,11 @@ async def ingest_document(
             for chunk, pii in zip(chunks, pii_flags, strict=True):
                 await conn.execute(
                     """
-                    INSERT INTO chunks (id, doc_id, chunk_index, text, pii_detected)
-                    VALUES (%s, %s, %s, %s, %s)
+                    INSERT INTO chunks (id, doc_id, chunk_index, text, pii_detected, token_count)
+                    VALUES (%s, %s, %s, %s, %s, %s)
                     ON CONFLICT (doc_id, chunk_index) DO NOTHING
                     """,
-                    (str(uuid.uuid4()), doc_id, chunk.index, chunk.text, pii),
+                    (str(uuid.uuid4()), doc_id, chunk.index, chunk.text, pii, chunk.char_count),
                 )
 
         # 5. INSERT outbox event (graph write deferred to outbox worker)

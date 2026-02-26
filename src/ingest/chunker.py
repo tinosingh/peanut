@@ -1,101 +1,125 @@
-"""Token-aware text chunker.
+"""Character-aware text chunker.
 
-Approximates token count using word count (1 word ≈ 1.3 tokens).
-Chunk size and overlap are read from the config table at ingest time.
+nomic-embed-text uses a BERT WordPiece tokenizer with a 2048-token context
+window.  BERT token counts vary wildly by language — Swedish/Finnish text
+averages ~1.2 chars per token versus ~4 chars per token for English.
 
-For production, swap the tokenizer with tiktoken or a sentence-transformers
-tokenizer for exact counts.
+Because tiktoken (cl100k_base / GPT) has *no* correlation with BERT token
+counts, this module enforces a conservative **character limit** derived from
+the worst-case language in the corpus:
+
+    2048 BERT tokens × 1.2 chars/token ≈ 2,400 chars (hard ceiling)
+
+Chunk size and overlap are still expressed in characters (not tokens) and
+read from the config table at ingest time.
 """
 from __future__ import annotations
 
 import re
 from dataclasses import dataclass
 
+# Hard ceiling: nomic-embed-text context_length = 2048 BERT tokens.
+# Swedish/Finnish ≈ 1.2 chars/token → 2048 × 1.2 ≈ 2,457 chars.
+# Use 2000 for a safe margin.
+MAX_CHUNK_CHARS = 2000
+
 
 @dataclass
 class Chunk:
     index: int
     text: str
-    token_estimate: int
-
-
-def _word_count(text: str) -> int:
-    return len(text.split())
-
-
-def _estimate_tokens(text: str) -> int:
-    """Rough token estimate: 1.3 tokens per word."""
-    return int(_word_count(text) * 1.3)
+    char_count: int
 
 
 def chunk_text(
     text: str,
-    chunk_size: int = 512,
-    overlap: int = 50,
+    chunk_size: int = 1800,
+    overlap: int = 200,
 ) -> list[Chunk]:
-    """Split text into overlapping token-approximate chunks.
+    """Split *text* into overlapping chunks that fit within the embedding
+    model's context window.
+
+    All sizes are in **characters** (not tokens) because the relevant
+    tokenizer is BERT WordPiece, and the chars-per-token ratio is
+    language-dependent.  The hard ceiling ``MAX_CHUNK_CHARS`` guarantees
+    every chunk is safe for nomic-embed-text regardless of language.
 
     Args:
         text:       Input text.
-        chunk_size: Target tokens per chunk (default from config table).
-        overlap:    Token overlap between consecutive chunks.
+        chunk_size: Target characters per chunk (default 1800).
+        overlap:    Character overlap between consecutive chunks (default 200).
 
     Returns:
-        List of Chunk objects with index, text, and token estimate.
+        List of :class:`Chunk` objects ordered by index.
     """
-    if not text.strip():
+    if not text or not text.strip():
         return []
 
-    # Split into sentences for cleaner boundaries
+    # Effective target must never exceed the hard ceiling.
+    target = min(chunk_size, MAX_CHUNK_CHARS)
+
     sentences = re.split(r"(?<=[.!?])\s+", text.strip())
     chunks: list[Chunk] = []
     current: list[str] = []
-    current_tokens = 0
+    current_chars = 0
     chunk_idx = 0
 
-    # Overlap buffer (last N words)
-    overlap_words_target = int(overlap / 1.3)
-    # Hard limit: nomic-embed-text supports 8192 tokens context
-    # But word count estimation (1.3 tokens/word) is approximate
-    # Set conservative max to 512 tokens to avoid overflow errors
-    # (8 chunks × 512 tokens = 4096 tokens, safe margin from 8192 limit)
-    max_tokens = 512
-
     for sentence in sentences:
-        s_tokens = _estimate_tokens(sentence)
+        s_len = len(sentence)
 
-        # If a single sentence exceeds max_tokens, truncate it
-        if s_tokens > max_tokens:
+        # If a single sentence exceeds the hard ceiling, hard-split it.
+        if s_len > MAX_CHUNK_CHARS:
+            # Flush anything accumulated so far.
+            if current:
+                chunk_str = " ".join(current)
+                chunks.append(Chunk(chunk_idx, chunk_str, len(chunk_str)))
+                chunk_idx += 1
+                current, current_chars = [], 0
+
+            # Split long sentence on word boundaries.
             words = sentence.split()
-            # Estimate words needed for max_tokens (1.3 tokens per word)
-            max_words = int(max_tokens / 1.3)
-            sentence = " ".join(words[:max_words])
-            s_tokens = _estimate_tokens(sentence)
+            buf: list[str] = []
+            buf_chars = 0
+            for word in words:
+                # +1 for the space that joins words
+                added = len(word) + (1 if buf else 0)
+                if buf_chars + added > MAX_CHUNK_CHARS and buf:
+                    chunk_str = " ".join(buf)
+                    chunks.append(Chunk(chunk_idx, chunk_str, len(chunk_str)))
+                    chunk_idx += 1
+                    buf, buf_chars = [], 0
+                buf.append(word)
+                buf_chars += added
+            if buf:
+                # Remainder goes into ``current`` for normal flow.
+                current = buf
+                current_chars = buf_chars
+            continue
 
-        if current_tokens + s_tokens > chunk_size and current:
-            chunk_text_str = " ".join(current)
-            chunks.append(Chunk(
-                index=chunk_idx,
-                text=chunk_text_str,
-                token_estimate=current_tokens,
-            ))
+        # Normal path: accumulate sentences up to *target*.
+        if current_chars + len(sentence) + 1 > target and current:
+            chunk_str = " ".join(current)
+            chunks.append(Chunk(chunk_idx, chunk_str, len(chunk_str)))
             chunk_idx += 1
 
-            # Seed next chunk with overlap (last N words of current chunk)
-            all_words = chunk_text_str.split()
-            overlap_words = all_words[-overlap_words_target:] if overlap_words_target > 0 else []
+            # Seed next chunk with overlap characters from the tail.
+            overlap_words: list[str] = []
+            overlap_chars = 0
+            for word in reversed(chunk_str.split()):
+                added = len(word) + (1 if overlap_words else 0)
+                if overlap_chars + added > overlap:
+                    break
+                overlap_words.insert(0, word)
+                overlap_chars += added
             current = overlap_words
-            current_tokens = _estimate_tokens(" ".join(current))
+            current_chars = overlap_chars
 
         current.append(sentence)
-        current_tokens += s_tokens
+        current_chars += s_len + (1 if len(current) > 1 else 0)
 
-    # Flush remaining
+    # Flush remaining.
     if current:
-        chunks.append(Chunk(
-            index=chunk_idx,
-            text=" ".join(current),
-            token_estimate=current_tokens,
-        ))
+        chunk_str = " ".join(current)
+        chunks.append(Chunk(chunk_idx, chunk_str, len(chunk_str)))
 
     return chunks

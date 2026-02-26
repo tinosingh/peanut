@@ -55,9 +55,20 @@ def chunk_text(
 
     # Overlap buffer (last N words)
     overlap_words_target = int(overlap / 1.3)
+    # Hard limit: Ollama embedding models typically support ~512 tokens
+    # Set hard max to 1000 tokens (~770 words, ~5000 chars) to be safe
+    max_tokens = 1000
 
     for sentence in sentences:
         s_tokens = _estimate_tokens(sentence)
+
+        # If a single sentence exceeds max_tokens, truncate it
+        if s_tokens > max_tokens:
+            words = sentence.split()
+            # Estimate words needed for max_tokens (1.3 tokens per word)
+            max_words = int(max_tokens / 1.3)
+            sentence = " ".join(words[:max_words])
+            s_tokens = _estimate_tokens(sentence)
 
         if current_tokens + s_tokens > chunk_size and current:
             chunk_text_str = " ".join(current)

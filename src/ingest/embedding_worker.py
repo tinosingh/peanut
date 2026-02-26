@@ -20,10 +20,10 @@ log = structlog.get_logger()
 EMBED_POLL_INTERVAL = 1   # seconds between DB polls
 _CONSECUTIVE_ERROR_THRESHOLD = 10  # circuit breaker trips after this many failures
 _CIRCUIT_BREAKER_BACKOFF = 60  # seconds to wait when circuit breaker trips
-# Tune based on available RAM and Ollama model size
-# Larger batches = more memory but faster throughput
-# 200 = ~50-100MB for nomic-embed-text
-EMBED_BATCH_SIZE = 200
+# Tuned for Apple M2 16GB: batch 8, chunk 384 tokens
+# M2 can parallelize 8 requests of ~1,200 bytes each = ~9,600 tokens (safe margin)
+# Avoids token overflow with nomic-embed-text (~8192 context limit)
+EMBED_BATCH_SIZE = 8
 
 
 async def call_ollama_embed(

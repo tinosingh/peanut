@@ -35,6 +35,8 @@ async def call_ollama_embed(
             f"{base_url}/api/embed",
             json={"model": model, "input": texts},
         )
+        if resp.status_code != 200:
+            log.error("ollama_request_failed", status=resp.status_code, response=resp.text[:500], batch_size=len(texts))
         resp.raise_for_status()
         return resp.json()["embeddings"]
 
@@ -80,14 +82,15 @@ async def embedding_worker(
                 
                 async with pool.connection() as conn:
                     db_start = time.time()
-                    # Batch UPDATE via executemany for efficiency
-                    await conn.executemany("""
-                        UPDATE chunks
-                        SET embedding = %s,
-                            embedded_at = now(),
-                            embedding_status = 'done'
-                        WHERE id = %s
-                    """, [(emb, cid) for cid, emb in zip(ids, embeddings, strict=True)])
+                    # Batch UPDATE via individual executes (psycopg3 AsyncConnection doesn't have executemany)
+                    for cid, emb in zip(ids, embeddings, strict=True):
+                        await conn.execute("""
+                            UPDATE chunks
+                            SET embedding = %s,
+                                embedded_at = now(),
+                                embedding_status = 'done'
+                            WHERE id = %s
+                        """, (emb, cid))
                     db_latency_ms = (time.time() - db_start) * 1000
                 
                 log.info("embeddings_written", 

@@ -62,7 +62,7 @@ class DashboardView(Widget):
             yield MetricCard("pending", "—", id="m-pending")
             yield MetricCard("outbox", "—", id="m-outbox")
             yield MetricCard("dead letters", "—", id="m-dead")
-        yield Static("PIPELINE", id="pipeline-label")
+        yield Static("PIPELINE", id="pipeline-data-label")
         tbl = DataTable(id="pipeline-table", show_cursor=False)
         yield tbl
         yield Static("", id="status-bar", classes="status-bar")

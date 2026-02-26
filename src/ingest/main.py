@@ -77,6 +77,17 @@ async def _handle_file(path: str, sha: str) -> None:
         elif file_type == "pdf":
             text = parse_pdf(path)
             chunks = chunk_text(text, chunk_size, chunk_overlap)
+
+            # Skip empty PDFs — no extractable text, delete from drop-zone
+            if not chunks:
+                import os as os_module
+                try:
+                    os_module.remove(path)
+                    log.info("ingest_delete_empty_pdf", path=path)
+                except OSError as e:
+                    log.warning("ingest_empty_pdf_delete_failed", path=path, error=str(e))
+                return
+
             pii_flags = [has_pii(c.text) for c in chunks]
             doc_id = await ingest_document(
                 pool,

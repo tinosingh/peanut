@@ -34,11 +34,15 @@ def _apply_outbox_event(graph: Any, event_type: str, payload: dict) -> None:
         ingested_at = payload.get("ingested_at", "")
 
         # Build a single batched Cypher query for sender + all recipients
+        source_path = payload.get("source_path", "")
+        # Extract filename for graph display (e.g., "/drop-zone/foo.pdf" → "foo.pdf")
+        doc_title = source_path.split("/")[-1] if source_path else "Document"
+
         cypher_parts = [
             "MERGE (sender:Person {email: $sender_email}) "
             "ON CREATE SET sender.id = $pid, sender.display_name = $name, sender.pii = true "
             "MERGE (d:Document {id: $doc_id}) "
-            "ON CREATE SET d.source_path = $path, d.source_type = $type, d.ingested_at = $ts "
+            "ON CREATE SET d.source_path = $path, d.source_type = $type, d.title = $title, d.ingested_at = $ts "
             "MERGE (sender)-[sr:SENT {thread_id: $doc_id}]->(d) "
             "ON CREATE SET sr.valid_at = $ts"
         ]
@@ -47,7 +51,8 @@ def _apply_outbox_event(graph: Any, event_type: str, payload: dict) -> None:
             "pid": sender.get("id", doc_id),
             "name": sender.get("name", ""),
             "doc_id": doc_id,
-            "path": payload.get("source_path", ""),
+            "path": source_path,
+            "title": doc_title,
             "type": payload.get("source_type", ""),
             "ts": ingested_at,
         }

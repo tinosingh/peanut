@@ -55,9 +55,11 @@ def chunk_text(
 
     # Overlap buffer (last N words)
     overlap_words_target = int(overlap / 1.3)
-    # Hard limit: Ollama embedding models typically support ~512 tokens
-    # Set hard max to 1000 tokens (~770 words, ~5000 chars) to be safe
-    max_tokens = 1000
+    # Hard limit: nomic-embed-text supports 8192 tokens context
+    # But word count estimation (1.3 tokens/word) is approximate
+    # Set conservative max to 512 tokens to avoid overflow errors
+    # (8 chunks × 512 tokens = 4096 tokens, safe margin from 8192 limit)
+    max_tokens = 512
 
     for sentence in sentences:
         s_tokens = _estimate_tokens(sentence)
